@@ -77,99 +77,75 @@ const certifications = [
   { name: "Sedex", src: "/image/certifications/sedex.png" },
 ]
 
-// repeated so the scrolling rows never show a gap, even on wide screens
-const rowOne = [...certifications, ...certifications, ...certifications, ...certifications]
-const rowTwo = [...rowOne].reverse()
-
 const points = ["Quality", "Safety", "Sustainability"]
-
-/* ---------- one scrolling row of badges ---------- */
-
-function BadgeRow({ items, reverse = false }) {
-  return (
-    <div className="cert-fade overflow-hidden py-2">
-      <div className={`${reverse ? "cert-marquee-rev" : "cert-marquee"} flex w-max`}>
-        {items.map((cert, i) => (
-          <div
-            key={i}
-            className="cert-tile group mr-4 flex h-28 w-44 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mr-6 sm:h-36 sm:w-56 sm:p-4"
-          >
-            {/* red bar that draws across the top on hover */}
-            <span className="absolute left-0 top-0 h-[3px] w-full origin-left scale-x-0 bg-gradient-to-r from-[#B92220] to-[#ff6b66] transition-transform duration-500 group-hover:scale-x-100" />
-
-            <div className="relative h-12 w-full sm:h-16">
-              <Image
-                src={cert.src}
-                alt={cert.name}
-                fill
-                sizes="224px"
-                className="object-contain transition-transform duration-500 group-hover:scale-110"
-              />
-            </div>
-            <span className="flex items-center gap-1 text-center text-[11px] font-bold leading-tight text-slate-700 transition-colors duration-300 group-hover:text-[#B92220] sm:text-xs">
-              <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[#B92220]" />
-              {cert.name}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+const words = [...points, ...points, ...points, ...points]
+const AUTOPLAY_MS = 4500
 
 /* ---------- section ---------- */
 
 export default function Certifications() {
+  const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [reduced, setReduced] = useState(false)
+
+  useEffect(() => {
+    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+  }, [])
+
+  // auto-advance through the certificates; pauses while the pointer is over the panels
+  useEffect(() => {
+    if (paused || reduced) return
+    const id = setTimeout(() => setActive((a) => (a + 1) % certifications.length), AUTOPLAY_MS)
+    return () => clearTimeout(id)
+  }, [active, paused, reduced])
+
   return (
-    <section className="relative w-full overflow-hidden border-b border-gray-200 bg-white py-14 sm:py-20">
-      {/* soft animated glows */}
+    <section className="relative w-full overflow-hidden border-b border-gray-200 bg-white py-16 sm:py-24">
+      {/* dot texture + soft animated glows */}
+      <div className="cert-dots pointer-events-none absolute inset-0" />
       <div className="cert-float pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-[#B92220]/10 blur-3xl sm:h-96 sm:w-96" />
       <div
-        className="cert-float pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-rose-300/25 blur-3xl sm:h-96 sm:w-96"
+        className="cert-float pointer-events-none absolute -right-24 bottom-1/4 h-72 w-72 rounded-full bg-rose-300/25 blur-3xl sm:h-96 sm:w-96"
         style={{ animationDelay: "-4s" }}
       />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
-          {/* left: message */}
-          <div className="lg:col-span-4">
+        {/* header */}
+        <div className="grid grid-cols-1 items-end gap-8 lg:grid-cols-12 lg:gap-12">
+          <div className="lg:col-span-5">
             <Reveal variant="zoom">
-              <div className="flex items-center gap-4">
-                {/* red circle with a spinning dashed ring */}
-                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center sm:h-28 sm:w-28">
-                  <span className="cert-spin absolute inset-0 rounded-full border-2 border-dashed border-[#B92220]/50" />
-                  <span className="flex h-[78%] w-[78%] items-center justify-center rounded-full bg-gradient-to-br from-[#B92220] to-[#8f1a18] text-5xl font-black text-white shadow-lg shadow-[#B92220]/30 sm:text-6xl">
-                    <CountUp to={5} />
-                  </span>
-                </div>
-                <span className="text-sm font-bold uppercase leading-tight tracking-[0.15em] text-slate-500">
+              <div className="flex items-end gap-4">
+                <span className="cert-num bg-gradient-to-b from-[#B92220] to-[#8f1a18] bg-clip-text text-[clamp(7rem,20vw,12rem)] font-black leading-[.78] tracking-tighter text-transparent tabular-nums">
+                  <CountUp to={5} />
+                </span>
+                <span className="pb-2 text-sm font-black uppercase leading-tight tracking-[0.2em] text-slate-900">
                   Global
                   <br />
-                  certifications
+                  certifi&shy;cations
+                  <span className="mt-3 block h-1 w-12 rounded-full bg-[#B92220]" />
                 </span>
               </div>
             </Reveal>
+          </div>
 
+          <div className="lg:col-span-7">
             <Reveal variant="left" delay={120}>
-              <h2 className="mt-6 text-2xl font-black leading-tight tracking-tight text-slate-900 sm:text-3xl">
+              <h2 className="text-3xl font-black leading-[1.05] tracking-tight text-slate-900 sm:text-5xl">
                 Certified for quality, safety and sustainability
               </h2>
             </Reveal>
-
             <Reveal variant="left" delay={220}>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                Recognized international standards behind every label, tag and package we
-                make.
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-lg">
+                Recognized international standards behind every label, tag and package we make.
               </p>
             </Reveal>
-
             <div className="mt-6 flex flex-wrap gap-3">
               {points.map((point, i) => (
                 <Reveal key={point} variant="zoom" delay={320 + i * 120}>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[#B92220]/25 bg-[#B92220]/5 px-4 py-2 text-sm font-semibold text-[#B92220]">
-                    <span className="relative flex h-5 w-5 items-center justify-center rounded-full bg-[#B92220] text-white">
-                      <span className="absolute inset-0 animate-ping rounded-full bg-[#B92220]/40 [animation-duration:2.5s] motion-reduce:animate-none" />
-                      <Check className="relative h-3 w-3" strokeWidth={3} />
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[#0a0a0a] py-2 pl-2 pr-4 text-sm font-semibold text-white">
+                    <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-[#B92220]">
+                      <span className="absolute inset-0 animate-ping rounded-full bg-[#B92220]/60 [animation-duration:2.5s] motion-reduce:animate-none" />
+                      <Check className="relative h-3.5 w-3.5" strokeWidth={3} />
                     </span>
                     {point}
                   </span>
@@ -177,18 +153,113 @@ export default function Certifications() {
               ))}
             </div>
           </div>
+        </div>
 
-          {/* right: two rows of badges scrolling in opposite directions */}
-          <div className="lg:col-span-8">
-            <Reveal variant="right" delay={150}>
-              <div className="relative space-y-1 overflow-hidden rounded-3xl border border-[#B92220]/15 bg-gradient-to-br from-rose-50 via-white to-rose-50 py-4 shadow-lg shadow-[#B92220]/5 sm:space-y-2 sm:py-6">
-                <BadgeRow items={rowOne} />
-                <BadgeRow items={rowTwo} reverse />
-              </div>
-            </Reveal>
+        {/* expanding certificate panels */}
+        <Reveal variant="up" delay={200} className="mt-12 sm:mt-16">
+          <div
+            className="flex flex-col gap-3 md:h-[27rem] md:flex-row"
+            onPointerEnter={(e) => e.pointerType === "mouse" && setPaused(true)}
+            onPointerLeave={(e) => e.pointerType === "mouse" && setPaused(false)}
+          >
+            {certifications.map((cert, i) => {
+              const on = i === active
+              return (
+                <button
+                  key={cert.name}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={cert.name}
+                  onClick={() => setActive(i)}
+                  onFocus={() => setActive(i)}
+                  onPointerEnter={(e) => e.pointerType === "mouse" && setActive(i)}
+                  className={`relative isolate overflow-hidden rounded-3xl bg-[#0a0a0a] text-left text-white shadow-lg shadow-black/10 transition-[flex,height] duration-700 ease-[cubic-bezier(.22,1,.36,1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#B92220] ${
+                    on ? "h-80 md:h-auto md:flex-[4.5]" : "h-[4.5rem] md:h-auto md:flex-1"
+                  }`}
+                >
+                  {/* red layer fades in on the active panel */}
+                  <span
+                    className={`absolute inset-0 -z-10 bg-gradient-to-br from-[#B92220] to-[#8f1a18] transition-opacity duration-700 ${on ? "opacity-100" : "opacity-0"}`}
+                  />
+                  {on && <span className="cert-sweep pointer-events-none absolute inset-y-0 -z-10 w-1/3" />}
+
+                  {/* index */}
+                  <span className={`absolute right-4 top-3 text-3xl font-black tabular-nums transition-colors duration-700 md:right-5 md:top-4 md:text-5xl ${on ? "text-white/30" : "text-white/10"}`}>
+                    0{i + 1}
+                  </span>
+
+                  {/* logo tile morphs between small and large */}
+                  <span
+                    className={`absolute overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${
+                      on ? "left-4 top-4 h-24 w-40 md:left-6 md:top-6 md:h-28 md:w-52" : "left-3 top-3 h-12 w-12 md:left-1/2 md:top-5 md:-translate-x-1/2"
+                    }`}
+                  >
+                    <Image
+                      src={cert.src}
+                      alt=""
+                      fill
+                      sizes="208px"
+                      className={`object-contain transition-all duration-700 ${on ? "p-3" : "p-1.5"}`}
+                    />
+                  </span>
+
+                  {/* collapsed label */}
+                  <span
+                    className={`absolute left-[4.75rem] top-1/2 -translate-y-1/2 whitespace-nowrap text-sm font-bold transition-all duration-500 md:bottom-5 md:left-1/2 md:top-auto md:-translate-x-1/2 md:translate-y-0 md:rotate-180 md:[writing-mode:vertical-rl] ${
+                      on ? "pointer-events-none opacity-0" : "opacity-100 delay-300"
+                    }`}
+                  >
+                    {cert.name}
+                  </span>
+
+                  {/* expanded label */}
+                  <span
+                    className={`absolute bottom-5 left-4 right-4 transition-all duration-700 md:bottom-7 md:left-6 md:right-6 ${
+                      on ? "translate-y-0 opacity-100 delay-300" : "pointer-events-none translate-y-6 opacity-0"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white/80">
+                      <BadgeCheck className="h-4 w-4" aria-hidden="true" />
+                      Certified standard
+                    </span>
+                    <span className="mt-2 block text-2xl font-black leading-tight tracking-tight sm:text-3xl md:text-4xl">
+                      {cert.name}
+                    </span>
+                  </span>
+
+                  {/* autoplay progress */}
+                  {on && !reduced && (
+                    <span
+                      key={`p-${active}`}
+                      className="cert-progress absolute bottom-0 left-0 h-1 w-full origin-left bg-white/90"
+                      style={{ animationDuration: `${AUTOPLAY_MS}ms`, animationPlayState: paused ? "paused" : "running" }}
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </Reveal>
+      </div>
+
+      {/* giant scrolling words */}
+      <Reveal variant="up" delay={100} className="mt-14 sm:mt-20">
+        <div aria-hidden="true" className="cert-fade overflow-hidden border-y-2 border-[#0a0a0a] py-3 sm:py-4">
+          <div className="cert-marquee flex w-max">
+            {words.map((w, i) => (
+              <span
+                key={i}
+                className={`flex items-center gap-5 whitespace-nowrap pr-5 text-[clamp(2.2rem,6.5vw,5.5rem)] font-black uppercase leading-none tracking-tighter sm:gap-8 sm:pr-8 ${
+                  i % 3 === 0 ? "text-[#0a0a0a]" : i % 3 === 1 ? "text-[#B92220]" : "text-transparent [-webkit-text-stroke:1.5px_#0a0a0a]"
+                }`}
+              >
+                {w}
+                <span className="cert-spin inline-block text-[.55em] text-[#B92220]">✱</span>
+              </span>
+            ))}
           </div>
         </div>
-      </div>
+      </Reveal>
 
       <style>{`
         .cert-reveal {
@@ -203,49 +274,41 @@ export default function Certifications() {
         .cert-zoom  { transform: scale(.5); filter: blur(10px); }
         .cert-in    { opacity: 1; transform: none; filter: blur(0); }
 
+        .cert-dots {
+          background-image: radial-gradient(#0a0a0a 1px, transparent 1px);
+          background-size: 24px 24px;
+          opacity: .06;
+          -webkit-mask-image: linear-gradient(to bottom, #000, transparent 70%);
+          mask-image: linear-gradient(to bottom, #000, transparent 70%);
+        }
         .cert-fade {
-          -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
         }
 
-        .cert-tile {
-          position: relative;
-          overflow: hidden;
-          transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease;
-        }
-        .cert-tile::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: -120%;
-          width: 60%;
-          height: 100%;
-          background: linear-gradient(120deg, transparent, rgba(185,34,32,.12), transparent);
+        .cert-sweep {
+          left: -40%;
+          background: linear-gradient(120deg, transparent, rgba(255,255,255,.22), transparent);
           transform: skewX(-20deg);
-          transition: left .9s ease;
-          pointer-events: none;
+          animation: certSweep 3.2s ease-in-out infinite;
         }
-        .cert-tile:hover {
-          transform: translateY(-6px);
-          border-color: rgba(185,34,32,.5);
-          box-shadow: 0 16px 32px -10px rgba(185,34,32,.3);
-        }
-        .cert-tile:hover::after { left: 140%; }
-
+        .cert-progress { animation: certProgress linear forwards; }
+        .cert-num { animation: certNum 4s ease-in-out infinite; }
         .cert-float { animation: certFloat 10s ease-in-out infinite; }
-        .cert-spin  { animation: certSpin 14s linear infinite; }
-        .cert-marquee     { animation: certMarquee 40s linear infinite; }
-        .cert-marquee-rev { animation: certMarquee 46s linear infinite reverse; }
-        .cert-marquee:hover,
-        .cert-marquee-rev:hover { animation-play-state: paused; }
+        .cert-spin  { animation: certSpin 8s linear infinite; }
+        .cert-marquee { animation: certMarquee 38s linear infinite; }
+        .cert-marquee:hover { animation-play-state: paused; }
 
-        @keyframes certFloat   { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-30px) scale(1.12); } }
-        @keyframes certSpin    { to { transform: rotate(360deg); } }
-        @keyframes certMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes certSweep    { 0% { left: -40%; } 60%, 100% { left: 140%; } }
+        @keyframes certProgress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        @keyframes certNum      { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes certFloat    { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-30px) scale(1.12); } }
+        @keyframes certSpin     { to { transform: rotate(360deg); } }
+        @keyframes certMarquee  { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
         @media (prefers-reduced-motion: reduce) {
           .cert-reveal { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; }
-          .cert-float, .cert-spin, .cert-marquee, .cert-marquee-rev { animation: none !important; }
+          .cert-sweep, .cert-progress, .cert-num, .cert-float, .cert-spin, .cert-marquee { animation: none !important; }
         }
       `}</style>
     </section>

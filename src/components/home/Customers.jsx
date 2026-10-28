@@ -74,17 +74,17 @@ function CountUp({ to, suffix = "" }) {
 
 // Brand logos (crop from brochure page 11, save in /public/image/customers/)
 const brands = [
-  { name: "Okaidi-Obaibi", src: "/image/customers/okaidi-obaibi.png" },
-  { name: "Arrow", src: "/image/customers/arrow.png" },
-  { name: "Chipie", src: "/image/customers/chipie.png" },
-  { name: "Jacadi", src: "/image/customers/jacadi.png" },
-  { name: "Mufti", src: "/image/customers/mufti.png" },
-  { name: "Indian Terrain", src: "/image/customers/indian-terrain.png" },
-  { name: "Calvin Klein", src: "/image/customers/calvin-klein.png" },
-  { name: "Flying Machine", src: "/image/customers/flying-machine.png" },
-  { name: "Cleo", src: "/image/customers/cleo.png" },
-  { name: "Tommy Hilfiger", src: "/image/customers/tommy-hilfiger.png" },
-  { name: "Friedrich", src: "/image/customers/friedrich.png" },
+  { name: "Okaidi-Obaibi", src: "/image/customers/cus1.png" },
+  { name: "Arrow", src: "/image/customers/cus2.png" },
+  { name: "Chipie", src: "/image/customers/cus3.png" },
+  { name: "Jacadi", src: "/image/customers/cus4.png" },
+  { name: "Mufti", src: "/image/customers/cus5.jpg" },
+  { name: "Indian Terrain", src: "/image/customers/cus6.png" },
+  { name: "Calvin Klein", src: "/image/customers/cus7.png" },
+  { name: "Flying Machine", src: "/image/customers/cus8.png" },
+  { name: "Cleo", src: "/image/customers/cus9.jpg" },
+  { name: "Tommy Hilfiger", src: "/image/customers/cus10.jpg" },
+  { name: "Friedrich", src: "/image/customers/cus11.jpg" },
 ]
 
 // Client names from the brochure customer list

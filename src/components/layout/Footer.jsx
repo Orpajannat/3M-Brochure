@@ -1,45 +1,43 @@
 "use client"
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useSyncExternalStore } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowUp, ChevronRight, Globe, Mail, MapPin, Phone } from "lucide-react"
 
 /* ---------- small animation helpers ---------- */
 
-function useInView(threshold = 0.15) {
+function Reveal({ children, delay = 0, className = "" }) {
   const ref = useRef(null)
-  const [inView, setInView] = useState(false)
 
   useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    if (typeof IntersectionObserver === "undefined") {
-      setInView(true)
-      return
+    const element = ref.current
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (!element || media.matches || !("IntersectionObserver" in window)) return
+    if (element.getBoundingClientRect().top < window.innerHeight) return
+
+    element.setAttribute("data-ft-pending", "true")
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      element.setAttribute("data-ft-visible", "true")
+      observer.disconnect()
+    }, { threshold: 0.08 })
+    observer.observe(element)
+
+    function revealWithoutMotion() {
+      if (!media.matches) return
+      element.setAttribute("data-ft-visible", "true")
+      observer.disconnect()
     }
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true)
-          obs.disconnect()
-        }
-      },
-      { threshold }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
+    media.addEventListener("change", revealWithoutMotion)
+    return () => {
+      observer.disconnect()
+      media.removeEventListener("change", revealWithoutMotion)
+      element.removeAttribute("data-ft-pending")
+    }
+  }, [])
 
-  return [ref, inView]
-}
-
-function Reveal({ children, delay = 0, className = "" }) {
-  const [ref, inView] = useInView()
   return (
-    <div
-      ref={ref}
-      className={`ft-reveal ${inView ? "ft-in" : ""} ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
+    <div ref={ref} className={`ft-reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>
       {children}
     </div>
   )
@@ -52,7 +50,7 @@ const quickLinks = [
   { name: "About Us", href: "/about" },
   { name: "Products", href: "/products" },
   { name: "Services", href: "/services" },
-  { name: "Customers", href: "/customers" },
+  { name: "Customers", href: "/#customers" },
   { name: "Contact Us", href: "/contact" },
 ]
 
@@ -79,21 +77,29 @@ const offices = [
   {
     country: "Thailand",
     contact: "Siriporn Yawichai, 3M Label Thailand",
-    address: "14/3 Moo 10, Tambon Buakkang, Amphur Sankamphang, Chiang Mai 50140, Thailand",
+    address: "14/3 Moo 10, Tambon Buakkang, Amphur Sankamphang, Chiang Mai 50130, Thailand",
     phones: [{ label: "+66 8 9700 3695", href: "tel:+66897003695" }],
     email: "sy@labelbankasia.com",
   },
 ]
 
+// Keep the browser clock out of prerendering and provide a stable hydration snapshot.
+const subscribeToYear = () => () => {}
+const getCurrentYear = () => new Date().getFullYear()
+const getServerYear = () => null
+
 /* ---------- footer ---------- */
 
 export default function Footer() {
-  const year = new Date().getFullYear()
+  const year = useSyncExternalStore(subscribeToYear, getCurrentYear, getServerYear)
 
-  const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" })
+  const scrollTop = () => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" })
+  }
 
   return (
-    <footer className="relative w-full overflow-hidden border-t border-white/10 bg-gradient-to-b from-[#1c1e25] to-[#101114] text-white/70">
+    <footer className="ft-footer relative w-full overflow-hidden border-t border-white/10 bg-gradient-to-b from-[#1c1e25] to-[#101114] text-white/70">
       {/* animated accent line on top */}
       <div className="ft-line absolute left-0 right-0 top-0 h-[3px]" />
 
@@ -104,9 +110,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
           {/* brand */}
           <Reveal className="lg:col-span-4">
-            <Link href="/" className="inline-block">
-              <span className="inline-block rounded-xl bg-white px-3 py-2">
-                <img src="/logo.png" alt="3M Label Limited" className="h-10 w-auto" />
+            <Link href="/" className="inline-block max-w-full">
+              <span className="inline-block max-w-full rounded-xl px-3 py-2">
+                <Image src="/image/Logo2.png" alt="3M Label Limited" width={912} height={273} sizes="267px" className="h-20 w-auto max-w-full object-contain" />
               </span>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/65">
@@ -120,7 +126,7 @@ export default function Footer() {
               className="group mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#ff6b66]"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition-all duration-300 group-hover:rotate-12 group-hover:bg-[#B92220] group-hover:text-white">
-                <Globe className="h-4 w-4" />
+                <Globe aria-hidden="true" className="h-4 w-4" />
               </span>
               www.labelbankasia.com
             </a>
@@ -128,43 +134,47 @@ export default function Footer() {
 
           {/* quick links */}
           <Reveal delay={120} className="lg:col-span-2">
-            <h4 className="text-sm font-bold uppercase tracking-[0.15em] text-white">
+            <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-white">
               Quick Links
-            </h4>
-            <ul className="mt-5 space-y-3">
-              {quickLinks.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="ft-link group inline-flex items-center gap-1 text-sm">
-                    <ChevronRight className="h-3.5 w-3.5 -ml-1 opacity-0 transition-all duration-300 group-hover:ml-0 group-hover:opacity-100" />
-                    <span>{link.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            </h2>
+            <nav aria-label="Footer quick links">
+              <ul className="mt-5 space-y-3">
+                {quickLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link href={link.href} className="ft-link group inline-flex items-center gap-1 text-sm">
+                      <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 -ml-1 opacity-0 transition-all duration-300 group-hover:ml-0 group-hover:opacity-100" />
+                      <span>{link.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           </Reveal>
 
           {/* products */}
           <Reveal delay={240} className="lg:col-span-2">
-            <h4 className="text-sm font-bold uppercase tracking-[0.15em] text-white">
+            <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-white">
               Products
-            </h4>
-            <ul className="mt-5 space-y-3">
-              {productLinks.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="ft-link group inline-flex items-center gap-1 text-sm">
-                    <ChevronRight className="h-3.5 w-3.5 -ml-1 opacity-0 transition-all duration-300 group-hover:ml-0 group-hover:opacity-100" />
-                    <span>{link.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            </h2>
+            <nav aria-label="Footer products">
+              <ul className="mt-5 space-y-3">
+                {productLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link href={link.href} className="ft-link group inline-flex items-center gap-1 text-sm">
+                      <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 -ml-1 opacity-0 transition-all duration-300 group-hover:ml-0 group-hover:opacity-100" />
+                      <span>{link.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           </Reveal>
 
           {/* offices */}
           <Reveal delay={360} className="sm:col-span-2 lg:col-span-4">
-            <h4 className="text-sm font-bold uppercase tracking-[0.15em] text-white">
+            <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-white">
               Our Offices
-            </h4>
+            </h2>
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               {offices.map((office) => (
                 <div
@@ -175,17 +185,23 @@ export default function Footer() {
                   <p className="mt-1 text-xs font-medium text-white/50">{office.contact}</p>
 
                   <div className="mt-3 space-y-2 text-sm">
-                    <p className="flex items-start gap-2.5">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#ff6b66]" />
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(office.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${office.address} (opens in Google Maps in a new tab)`}
+                      className="ft-link flex items-start gap-2.5"
+                    >
+                      <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#ff6b66]" />
                       <span className="leading-snug">{office.address}</span>
-                    </p>
+                    </a>
                     {office.phones.map((phone) => (
                       <a
                         key={phone.href}
                         href={phone.href}
                         className="ft-link flex items-center gap-2.5"
                       >
-                        <Phone className="h-4 w-4 shrink-0 text-[#ff6b66]" />
+                        <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#ff6b66]" />
                         <span>{phone.label}</span>
                       </a>
                     ))}
@@ -193,7 +209,7 @@ export default function Footer() {
                       href={`mailto:${office.email}`}
                       className="ft-link flex items-center gap-2.5 break-all"
                     >
-                      <Mail className="h-4 w-4 shrink-0 text-[#ff6b66]" />
+                      <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#ff6b66]" />
                       <span>{office.email}</span>
                     </a>
                   </div>
@@ -215,7 +231,7 @@ export default function Footer() {
             >
               Back to top
               <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/5 transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[#B92220] group-hover:bg-[#B92220] group-hover:text-white">
-                <ArrowUp className="h-4 w-4" />
+                <ArrowUp aria-hidden="true" className="h-4 w-4" />
               </span>
             </button>
           </div>
@@ -224,14 +240,16 @@ export default function Footer() {
 
       <style>{`
         .ft-reveal {
-          opacity: 0;
-          transform: translateY(40px);
-          filter: blur(6px);
+          opacity: 1;
+          transform: none;
+          filter: none;
           transition: opacity .8s cubic-bezier(.22,1,.36,1),
                       transform .8s cubic-bezier(.22,1,.36,1),
                       filter .8s ease;
         }
-        .ft-in { opacity: 1; transform: none; filter: blur(0); }
+        .ft-reveal[data-ft-pending="true"]:not([data-ft-visible="true"]) { opacity: 0; transform: translateY(40px); filter: blur(6px); }
+        .ft-reveal:focus-within { opacity: 1 !important; transform: none !important; filter: none !important; }
+        .ft-footer :is(a, button):focus-visible { outline: 2px solid #ff6b66; outline-offset: 4px; border-radius: 3px; }
 
         .ft-line {
           background: linear-gradient(90deg, #B92220, #ff6b66, #B92220);
@@ -247,6 +265,7 @@ export default function Footer() {
         @keyframes ftFloat { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-30px,30px) scale(1.12); } }
 
         @media (prefers-reduced-motion: reduce) {
+          .ft-footer *, .ft-footer *::before, .ft-footer *::after { animation: none !important; transition: none !important; }
           .ft-reveal { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; }
           .ft-line, .ft-float { animation: none !important; }
         }

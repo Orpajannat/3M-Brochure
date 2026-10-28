@@ -83,13 +83,14 @@ export default function Header() {
                     onNavigate={() => setMobileOpen(false)}
                 />
 
-                <button
-                    type='button'
-                    className='group relative order-2 ml-auto min-h-11 shrink-0 overflow-hidden whitespace-nowrap rounded-full bg-[#B92220] px-3 py-2 text-xs text-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#B92220] motion-reduce:transform-none motion-reduce:transition-none sm:px-4 sm:text-sm lg:order-3 lg:ml-0 lg:text-base'
+                <Link
+                    href='/contact'
+                    onClick={() => setMobileOpen(false)}
+                    className='group relative order-2 ml-auto inline-flex min-h-11 items-center justify-center shrink-0 overflow-hidden whitespace-nowrap rounded-full bg-[#B92220] px-3 py-2 text-xs text-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#B92220] motion-reduce:transform-none motion-reduce:transition-none sm:px-4 sm:text-sm lg:order-3 lg:ml-0 lg:text-base'
                 >
                     <span aria-hidden='true' className='absolute inset-0 -translate-x-full -skew-x-12 bg-linear-to-r from-transparent via-white/50 to-transparent transition-transform duration-700 group-hover:translate-x-full motion-reduce:hidden' />
                     <span className='relative z-10'>Request a Quote</span>
-                </button>
+                </Link>
             </div>
         </header>
     )
