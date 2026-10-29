@@ -1,373 +1,640 @@
 "use client"
-import React, { useEffect, useRef, useState } from "react"
+
+import { useEffect, useId, useRef, useState } from "react"
 import Link from "next/link"
-import { Printer, Zap, Clock, Cpu, ArrowRight, Sparkles, Send, Layers, Scissors, Truck } from "lucide-react"
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, Cpu, Globe2, Layers3, Pause, Play, Printer, ScanLine } from "lucide-react"
 
-/* ---------- animation helpers (no extra libraries needed) ---------- */
-
-function useInView(threshold = 0.2) {
-  const ref = useRef(null)
-  const [inView, setInView] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    if (typeof IntersectionObserver === "undefined") {
-      setInView(true)
-      return
-    }
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true)
-          obs.disconnect()
-        }
-      },
-      { threshold }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
-
-  return [ref, inView]
-}
-
-// variants: up | left | right | zoom
-function Reveal({ children, variant = "up", delay = 0, className = "" }) {
-  const [ref, inView] = useInView(0.15)
-  return (
-    <div
-      ref={ref}
-      className={`tech-reveal tech-${variant} ${inView ? "tech-in" : ""} ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </div>
-  )
-}
-
-// Headline where each word slides up from behind a mask
-function SplitWords({ text, highlightFrom = 999 }) {
-  const [ref, inView] = useInView(0.3)
-  return (
-    <span ref={ref}>
-      <span className="sr-only">{text}</span>
-      {text.split(" ").map((word, i) => (
-        <span key={i} aria-hidden="true" className="inline-block overflow-hidden pb-[0.12em] pr-[0.25em] align-bottom">
-          <span
-            className={`tech-word inline-block ${inView ? "tech-word-in" : ""} ${i >= highlightFrom ? "text-[#ff4d47]" : "text-white"}`}
-            style={{ transitionDelay: `${i * 100}ms` }}
-          >
-            {word}
-          </span>
-        </span>
-      ))}
-    </span>
-  )
-}
-
-function CountUp({ to, active }) {
-  const [val, setVal] = useState(0)
-
-  useEffect(() => {
-    if (!active) return
-    let raf
-    let start
-    const tick = (t) => {
-      if (!start) start = t
-      const p = Math.min((t - start) / 2200, 1)
-      setVal(Math.round(to * (1 - Math.pow(1 - p, 3))))
-      if (p < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [active, to])
-
-  return <span>{val}</span>
-}
-
-/* ---------- data ---------- */
-
-const techFeatures = [
-  { icon: Printer, title: "5-Color High-Speed Offset", desc: "Equipped with automated prepress color separation and electronic inking for consistent, vibrant print runs.", tag: "Prepress Automation", variant: "left" },
-  { icon: Zap, title: "Variable Laser Encoding", desc: "Zero minimum run requirements per SKU with rapid offset-quality barcode and hangtag encoding.", tag: "Zero Minimums", variant: "right" },
-  { icon: Clock, title: "72-Hour Rapid Turnaround", desc: "EDI-integrated workflow enabling same-day production on urgent orders and rapid global shipping.", tag: "Rapid Dispatch", variant: "left" },
-  { icon: Cpu, title: "Computerized Precision Cutting", desc: "Automated trimming and sorting systems guaranteeing pinpoint accuracy and uniform product dimensions.", tag: "Pinpoint Accuracy", variant: "right" },
+const capabilities = [
+  {
+    id: "print",
+    number: "01",
+    name: "Color, perfected.",
+    category: "Offset printing",
+    icon: Printer,
+    title: "Big runs.\nBeautifully consistent.",
+    description: "Automated platemaking meets electronic ink control. Our 4 and 5-color offset presses bring your brand's colors to life, with the same attention to detail from the first sheet to the last.",
+    metric: "12,000",
+    unit: "sheets per hour",
+    benchmark: "±0.01 mm registration tolerance",
+    annotation: "01 / COLOR SEPARATION",
+    detail: "Five colors. One exact impression.",
+    layers: ["Finish", "Color", "Material"],
+  },
+  {
+    id: "encode",
+    number: "02",
+    name: "Every tag, individual.",
+    category: "Variable laser encoding",
+    icon: ScanLine,
+    title: "One production run.\nEndless identities.",
+    description: "Give every label its own story. Variable data printing brings dynamic serialization to adhesive tickets and hangtags, with offset-quality results and the flexibility to handle every SKU.",
+    metric: "Zero",
+    unit: "minimum run per SKU",
+    benchmark: "Sub-micron optical precision",
+    annotation: "02 / VARIABLE DATA",
+    detail: "A unique identity in every detail.",
+    layers: ["Serial data", "Encoding", "Material"],
+  },
+  {
+    id: "connect",
+    number: "03",
+    name: "Always connected.",
+    category: "EDI & global network",
+    icon: Globe2,
+    title: "Your order.\nA connected journey.",
+    description: "From online order entry straight to the production floor. Our EDI infrastructure connects orders, inventory, and production updates so your team can keep every moving part in view.",
+    metric: "72",
+    unit: "hour standard turnaround",
+    benchmark: "Real-time order & inventory tracking",
+    annotation: "03 / CONNECTED PRODUCTION",
+    detail: "From your order to the world.",
+    layers: ["Order", "Production", "Dispatch"],
+  },
+  {
+    id: "finish",
+    number: "04",
+    name: "The perfect finish.",
+    category: "Precision finishing",
+    icon: Cpu,
+    title: "The final cut.\nNo detail overlooked.",
+    description: "High-speed trimming, folding, and sorting turn printed sheets into finished brand experiences. Computerized precision and multi-stage, in-house quality checks keep every batch beautifully uniform.",
+    metric: "100%",
+    unit: "in-house inspection",
+    benchmark: "Micron-level dimensional precision",
+    annotation: "04 / PRECISION FINISHING",
+    detail: "Considered. Cut. Quality checked.",
+    layers: ["Inspection", "Finishing", "Material"],
+  },
 ]
 
-const ticker = ["5-Color Offset", "Variable Laser Encoding", "EDI Integrated", "Precision Cutting", "72-Hour Turnaround", "Zero Minimums"]
-
-const steps = [
-  { icon: Send, title: "EDI Order", desc: "Electronic order entry and confirmation" },
-  { icon: Layers, title: "Prepress", desc: "Automated color separation" },
-  { icon: Printer, title: "Print & Encode", desc: "Offset and variable laser" },
-  { icon: Scissors, title: "Cut & Sort", desc: "Computerized trimming" },
-  { icon: Truck, title: "Dispatch", desc: "Same-day on rush orders" },
-]
-
-/* ---------- radar-style gauge: ring fills to 72h ---------- */
-
-const R = 88
-const CIRC = 2 * Math.PI * R
-
-function Gauge() {
-  const [ref, inView] = useInView(0.3)
+// Animated study canvas with modern bento styling
+function LabelStudy({ capability }) {
   return (
-    <div ref={ref} className="relative mx-auto aspect-square w-[min(78vw,20rem)]">
-      <div className="tech-radar absolute inset-[11%] rounded-full" />
-      <svg viewBox="0 0 220 220" className="relative h-full w-full" aria-hidden="true">
-        <g className="origin-center -rotate-90">
-          <circle cx="110" cy="110" r={R} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="10" />
-          <circle
-            cx="110"
-            cy="110"
-            r={R}
-            fill="none"
-            stroke="#B92220"
-            strokeWidth="10"
-            strokeLinecap="round"
-            strokeDasharray={CIRC}
-            strokeDashoffset={inView ? 0 : CIRC}
-            style={{ transition: "stroke-dashoffset 2.4s cubic-bezier(.22,1,.36,1) .3s", filter: "drop-shadow(0 0 8px rgba(185,34,32,.8))" }}
-          />
-        </g>
-        {Array.from({ length: 60 }).map((_, i) => (
-          <line
-            key={i}
-            x1="110" y1="2" x2="110" y2={i % 5 === 0 ? 11 : 7}
-            stroke={i % 5 === 0 ? "#ff6b66" : "rgba(255,255,255,.35)"}
-            strokeWidth={i % 5 === 0 ? 2 : 1}
-            transform={`rotate(${i * 6} 110 110)`}
-          />
-        ))}
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-center">
-        <div>
-          <div className="flex items-end justify-center leading-none">
-            <span className="text-6xl font-black tabular-nums sm:text-7xl"><CountUp to={72} active={inView} /></span>
-            <span className="pb-1.5 text-2xl font-black text-[#ff4d47] sm:text-3xl">h</span>
-          </div>
-          <p className="mt-2 text-xs font-semibold text-white/70 sm:text-sm">Standard turnaround</p>
-        </div>
+    <div className="tech-study" data-process={capability.id} aria-hidden="true">
+      <div className="tech-studyGrid" />
+      <div className="tech-orbit" />
+      <div className="tech-orbitInner" />
+      <span className="tech-crosshair tech-crosshairTop">+</span>
+      <span className="tech-crosshair tech-crosshairBottom">+</span>
+
+      <div className="tech-studyTopline">
+        <span>3M / MATERIAL STUDY</span>
+        <span className="tech-studyEdition">NO. {capability.number}</span>
       </div>
-    </div>
-  )
-}
 
-/* ---------- pipeline (order -> dispatch) with hexagon nodes ---------- */
-
-function Pipeline() {
-  const [ref, inView] = useInView(0.25)
-
-  return (
-    <div ref={ref} className="relative mt-20 sm:mt-28">
-      <Reveal variant="up" className="mb-12 text-center">
-        <p className="text-sm font-bold text-[#ff4d47]">How it flows</p>
-        <h3 className="mt-2 text-2xl font-black text-white sm:text-4xl">From order to dispatch</h3>
-      </Reveal>
-
-      <div className="relative">
-        {/* conveyor line: desktop */}
-        <div className="absolute left-[10%] right-[10%] top-8 hidden h-[2px] bg-white/15 md:block">
-          <div className={`h-full origin-left bg-gradient-to-r from-[#B92220] to-[#ff6b66] transition-transform duration-[2200ms] ease-out ${inView ? "scale-x-100" : "scale-x-0"}`} />
-          <span className="tech-packet-x absolute -top-[3px] h-2 w-2 rotate-45 bg-white shadow-[0_0_12px_#fff]" />
-          <span className="tech-packet-x absolute -top-[3px] h-2 w-2 rotate-45 bg-white shadow-[0_0_12px_#fff]" style={{ animationDelay: "-1.6s" }} />
-        </div>
-        {/* conveyor line: mobile */}
-        <div className="absolute bottom-8 left-8 top-8 w-[2px] bg-white/15 md:hidden">
-          <div className={`h-full origin-top bg-gradient-to-b from-[#B92220] to-[#ff6b66] transition-transform duration-[2200ms] ease-out ${inView ? "scale-y-100" : "scale-y-0"}`} />
-          <span className="tech-packet-y absolute -left-[3px] h-2 w-2 rotate-45 bg-white shadow-[0_0_12px_#fff]" />
-        </div>
-
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-5 md:gap-0">
-          {steps.map((step, i) => {
-            const Icon = step.icon
-            return (
-              <Reveal key={step.title} variant="zoom" delay={i * 150}>
-                <div className="group flex items-start gap-5 md:flex-col md:items-center md:px-2 md:text-center">
-                  <div className="tech-hex relative z-10 h-16 w-16 shrink-0 transition-all duration-500 group-hover:scale-110" style={{ background: inView ? "#B92220" : "rgba(255,255,255,.2)", transitionDelay: `${500 + i * 380}ms` }}>
-                    <span className="tech-hex absolute inset-[2px] grid place-items-center bg-[#0a0a0a] text-[#ff6b66] transition-colors duration-500 group-hover:bg-[#B92220] group-hover:text-white">
-                      <Icon className="h-6 w-6" aria-hidden="true" />
-                    </span>
-                  </div>
-                  <div className="pt-1 md:pt-4">
-                    <h4 className="text-base font-bold text-white">{step.title}</h4>
-                    <p className="mt-1 text-sm leading-snug text-white/65">{step.desc}</p>
-                  </div>
-                </div>
-              </Reveal>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ---------- main section ---------- */
-
-export default function TechnologySection() {
-  return (
-    <section id="technology" className="relative w-full overflow-hidden bg-[#0a0a0a] py-16 text-white sm:py-24 lg:py-32">
-      {/* animated background */}
-      <div className="tech-grid pointer-events-none absolute inset-0" />
-      <div className="tech-float pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-[#B92220]/30 blur-3xl sm:h-96 sm:w-96" />
-      <div className="tech-float pointer-events-none absolute -right-24 bottom-1/4 h-72 w-72 rounded-full bg-[#B92220]/20 blur-3xl sm:h-96 sm:w-96" style={{ animationDelay: "-4s" }} />
-      <div className="tech-scan pointer-events-none absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#ff6b66] to-transparent" />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* heading + gauge */}
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-7">
-            <Reveal variant="left">
-              <span className="inline-flex -skew-x-12 items-center bg-[#B92220] px-5 py-2 text-xs font-bold text-white sm:text-sm">
-                <span className="inline-flex skew-x-12 items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75 motion-reduce:animate-none" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                  </span>
-                  Advanced Technology
-                </span>
-              </span>
-            </Reveal>
-
-            <h2 className="mt-6 text-3xl font-black leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
-              <SplitWords text="State-of-the-Art Manufacturing & EDI Systems" highlightFrom={1} />
-            </h2>
-
-            <Reveal variant="up" delay={500}>
-              <p className="mt-6 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
-                Our integrated prepress, digital laser, and electronic data interchange (EDI) systems streamline complex ticketing orders with maximum accuracy and speed.
-              </p>
-            </Reveal>
-          </div>
-
-          <div className="lg:col-span-5">
-            <Reveal variant="zoom" delay={200}>
-              <Gauge />
-              <div className="mt-6 text-center">
-                <div className="flex items-center justify-center gap-2 text-sm font-bold text-[#ff6b66]">
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                  Fast Delivery Commitment
-                </div>
-                <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-white/65">
-                  EDI electronic order processing enables same-day dispatch for urgent production runs.
-                </p>
-                <Link
-                  href="/contact"
-                  className="group relative mt-5 inline-flex -skew-x-12 items-center bg-white px-8 py-4 text-sm font-black text-[#0a0a0a] transition-all duration-300 hover:-translate-y-1 hover:bg-[#B92220] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-                >
-                  <span className="inline-flex skew-x-12 items-center gap-2">
-                    Consult Engineering Team
-                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
-                  </span>
-                </Link>
+      <div className="tech-studyCanvas">
+        <div className="tech-artboard">
+          <div className="tech-labelAssembly">
+            <div className="tech-labelLayer tech-baseLayer">
+              <span className="tech-layerHole" />
+              <span className="tech-baseLines" />
+              <span className="tech-materialNote">THE FOUNDATION</span>
+            </div>
+            <div className="tech-labelLayer tech-colorLayer">
+              <span className="tech-layerHole" />
+              <div className="tech-colorBars"><span /><span /><span /><span /><span /></div>
+              <span className="tech-colorNote">CRAFTED IN EVERY COLOR.</span>
+            </div>
+            <div className="tech-labelLayer tech-topLayer">
+              <span className="tech-layerHole" />
+              <div className="tech-tagBrand">3M<span>LABEL LIMITED</span></div>
+              <div className="tech-tagTitle">Small label.<br />Big possibility<span>.</span></div>
+              <div className="tech-tagBottom">
+                <span className="tech-barcode" />
+                <ArrowUpRight size={26} strokeWidth={1.2} />
               </div>
-            </Reveal>
-          </div>
-        </div>
-
-        {/* tilted ticker band */}
-        <Reveal variant="up" delay={200} className="mt-16 sm:mt-24">
-          <div className="-mx-6 -rotate-1 overflow-hidden bg-[#B92220] py-3 shadow-[0_0_40px_rgba(185,34,32,.45)] sm:-mx-10">
-            <div className="tech-marquee flex w-max whitespace-nowrap" aria-hidden="true">
-              {[...ticker, ...ticker].map((t, i) => (
-                <span key={i} className="flex items-center gap-6 pr-6 text-sm font-black text-white sm:gap-8 sm:pr-8 sm:text-lg">
-                  {t}
-                  <span className="h-2 w-2 rotate-45 bg-[#0a0a0a]" />
-                </span>
-              ))}
+              <span className="tech-tagSerial">THE ART OF PRECISION / 001</span>
+              <span className="tech-scanBeam" />
+              <span className="tech-cutGuide" />
             </div>
           </div>
-        </Reveal>
+        </div>
+        <div className="tech-layerNotes" key={capability.id}>
+          {capability.layers.map((layer, index) => (
+            <span key={layer}><i />{layer}<small>0{index + 1}</small></span>
+          ))}
+        </div>
+      </div>
+      <div className="tech-studyBottomline">
+        <span>{capability.annotation}</span>
+        <div className="tech-inkDots"><i /><i /><i /><i /></div>
+      </div>
+    </div>
+  )
+}
 
-        {/* skewed spec rows */}
-        <div className="mt-16 flex flex-col gap-4 sm:mt-20">
-          {techFeatures.map((feat, idx) => {
-            const Icon = feat.icon
-            return (
-              <Reveal key={feat.title} variant={feat.variant} delay={idx * 120}>
-                <div className="group relative -skew-x-12 overflow-hidden border border-white/15 bg-white/[.04] transition-colors duration-500 hover:border-[#B92220]">
-                  <span className="absolute inset-0 -translate-x-full bg-[#B92220] transition-transform duration-[600ms] ease-[cubic-bezier(.22,1,.36,1)] group-hover:translate-x-0" />
-                  <div className="relative grid skew-x-12 grid-cols-[auto_1fr] items-center gap-x-5 gap-y-3 px-7 py-6 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1.3fr)_auto] md:gap-x-8 md:px-12">
-                    <span className="tech-hex grid h-14 w-14 place-items-center bg-[#B92220] text-white transition-all duration-500 group-hover:rotate-[360deg] group-hover:bg-white group-hover:text-[#B92220]">
-                      <Icon className="h-6 w-6" aria-hidden="true" />
-                    </span>
+export default function TechnologySection() {
+  const [activeStep, setActiveStep] = useState(0)
+  const [motionPaused, setMotionPaused] = useState(false)
+  const sectionRef = useRef(null)
+  const tabRefs = useRef([])
+  const instanceId = useId()
+  const active = capabilities[activeStep]
+  const ActiveIcon = active.icon
+  const panelId = `${instanceId}-technology-panel`
 
-                    <div>
-                      <span className="text-xs font-bold text-[#ff6b66] transition-colors duration-500 group-hover:text-white/80">0{idx + 1} &nbsp;/&nbsp; {feat.tag}</span>
-                      <h3 className="mt-1 text-lg font-black leading-tight sm:text-2xl">{feat.title}</h3>
-                    </div>
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section || typeof IntersectionObserver === "undefined") return
 
-                    <p className="col-span-2 text-sm leading-relaxed text-white/65 transition-colors duration-500 group-hover:text-white md:col-span-1">{feat.desc}</p>
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      section.dataset.inView = String(entry.isIntersecting)
+    })
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.dataset.revealed = "true"
+          revealObserver.unobserve(entry.target)
+        }
+      })
+    }, { threshold: 0.08 })
 
-                    <span className="hidden h-11 w-11 place-items-center rounded-full border border-white/30 transition-all duration-500 group-hover:translate-x-2 group-hover:border-white group-hover:bg-white group-hover:text-[#B92220] md:grid">
-                      <ArrowRight className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                  </div>
-                </div>
-              </Reveal>
-            )
-          })}
+    visibilityObserver.observe(section)
+    section.querySelectorAll("[data-reveal]").forEach((element) => revealObserver.observe(element))
+    return () => {
+      visibilityObserver.disconnect()
+      revealObserver.disconnect()
+    }
+  }, [])
+
+  function handleTabKeyDown(event, index) {
+    let nextIndex
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % capabilities.length
+    else if (event.key === "ArrowLeft") nextIndex = (index - 1 + capabilities.length) % capabilities.length
+    else if (event.key === "Home") nextIndex = 0
+    else if (event.key === "End") nextIndex = capabilities.length - 1
+    else return
+
+    event.preventDefault()
+    setActiveStep(nextIndex)
+    tabRefs.current[nextIndex]?.focus()
+  }
+
+  return (
+    <section
+      ref={sectionRef}
+      id="technology"
+      aria-labelledby={`${instanceId}-technology-heading`}
+      className="tech-section"
+      data-motion={motionPaused ? "paused" : "running"}
+    >
+      <div className="tech-container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="tech-eyebrow" data-reveal>
+          <span><span className="tech-redDot" />THE TECHNOLOGY BEHIND THE DETAIL</span>
+          <span className="tech-chapter">3M LABEL LIMITED / CAPABILITIES[cite: 1]</span>
         </div>
 
-        <Pipeline />
+        <header className="tech-header" data-reveal>
+          <h2 id={`${instanceId}-technology-heading`}>
+            Precision.<br />In every <span className="tech-headingAccent">layer<svg viewBox="0 0 340 22" preserveAspectRatio="none" aria-hidden="true"><path d="M3 16C82 0 226 1 337 11M40 21C142 10 237 9 307 16" /></svg></span><span className="tech-headingPeriod">.</span>
+          </h2>
+          <div className="tech-headerAside">
+            <div className="tech-registrationMark" aria-hidden="true"><span /><span /><span /><span /><i /></div>
+            <p>Behind every extraordinary label is a little science. And a lot of obsession.</p>
+            <span className="tech-exploreHint">EXPLORE OUR CAPABILITIES <ArrowDown size={14} aria-hidden="true" /></span>
+          </div>
+        </header>
+
+        {/* Bento Control Console */}
+        <div className="tech-bentoConsole" data-reveal>
+          <div className="tech-consoleToolbar">
+            <span className="tech-consoleLabel"><Layers3 size={15} aria-hidden="true" />PRODUCTION MATRIX // BENTO SYSTEM</span>
+            <div className="tech-consoleControls">
+              <span className="tech-interactiveLabel"><i />LIVE ANIMATION ENGINE</span>
+              <button
+                type="button"
+                className="tech-motionButton"
+                onClick={() => setMotionPaused((paused) => !paused)}
+                aria-label="Pause decorative animations"
+                aria-pressed={motionPaused}
+                title={motionPaused ? "Resume animations" : "Pause animations"}
+              >
+                {motionPaused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Bento Grid Tabs */}
+          <div className="tech-bentoGrid" role="tablist" aria-label="Technology capabilities">
+            {capabilities.map((capability, index) => {
+              const Icon = capability.icon
+              const isSelected = activeStep === index
+              return (
+                <button
+                  key={capability.id}
+                  ref={(element) => { tabRefs.current[index] = element }}
+                  type="button"
+                  role="tab"
+                  id={`${instanceId}-technology-tab-${index}`}
+                  aria-selected={isSelected}
+                  aria-controls={panelId}
+                  tabIndex={isSelected ? 0 : -1}
+                  className={`tech-bentoCard ${isSelected ? "is-active" : ""}`}
+                  onClick={() => setActiveStep(index)}
+                  onKeyDown={(event) => handleTabKeyDown(event, index)}
+                >
+                  <div className="tech-bentoCardTop">
+                    <span className="tech-bentoNumber">{capability.number}</span>
+                    <div className="tech-bentoIconBox"><Icon size={18} strokeWidth={1.5} aria-hidden="true" /></div>
+                  </div>
+                  <div>
+                    <span className="tech-bentoCategory">{capability.category}</span>
+                    <h4 className="tech-bentoTitle">{capability.name}</h4>
+                  </div>
+                  <div className="tech-bentoFooterIndicator">
+                    <span>{isSelected ? "ACTIVE FEED" : "VIEW STUDY"}</span>
+                    <ArrowUpRight size={14} aria-hidden="true" />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Active Feature Showcase Panel */}
+          <div className="tech-showcasePanel" role="tabpanel" id={panelId} aria-labelledby={`${instanceId}-technology-tab-${activeStep}`} tabIndex={0}>
+            <LabelStudy capability={active} />
+            <div className="tech-details">
+              <div className="tech-detailsContent" key={active.id}>
+                <div className="tech-detailEyebrow"><ActiveIcon size={16} aria-hidden="true" /><span>{active.category}</span><span className="tech-detailCount">{active.number} / 04</span></div>
+                <h3>{active.title.split("\n").map((line) => <span key={line}>{line}</span>)}</h3>
+                <p className="tech-description">{active.description}</p>
+                <div className="tech-metric"><strong>{active.metric}</strong><span>{active.unit}</span></div>
+                <div className="tech-benchmark"><Check size={15} aria-hidden="true" />{active.benchmark}</div>
+              </div>
+              <div className="tech-detailFootnote"><span className="tech-footnoteLine" /><span>{active.detail}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="tech-footer" data-reveal>
+          <div className="tech-turnaround">
+            <div className="tech-timeMark"><span>72</span><small>HOURS</small><ArrowUpRight size={17} aria-hidden="true" /></div>
+            <div>
+              <span className="tech-footerEyebrow">MADE PRECISE. MOVED FAST.</span>
+              <h3>Your next big idea.<br />Already in motion.</h3>
+              <p>Standard 72-hour turnaround. Worldwide shipping[cite: 3, 11].<br />Rush production available when your timeline needs it[cite: 3].</p>
+            </div>
+          </div>
+          <Link href="/contact" className="tech-contactLink">
+            <span>Let’s make it happen<small>TELL US ABOUT YOUR PROJECT</small></span>
+            <span className="tech-contactArrow"><ArrowUpRight size={26} strokeWidth={1.5} aria-hidden="true" /></span>
+          </Link>
+        </div>
+        <div className="tech-colophon">
+          <span>ENGINEERED WITH INTENTION.</span>
+          <span>FROM FIRST IMPRESSION TO FINAL DETAIL <ArrowRight size={12} aria-hidden="true" /></span>
+        </div>
       </div>
 
       <style>{`
-        .tech-reveal {
-          opacity: 0;
-          transition: opacity .9s cubic-bezier(.22,1,.36,1),
-                      transform .9s cubic-bezier(.22,1,.36,1),
-                      filter .9s ease;
-        }
-        .tech-up    { transform: translateY(60px) scale(.96); filter: blur(10px); }
-        .tech-left  { transform: translateX(-80px); filter: blur(8px); }
-        .tech-right { transform: translateX(80px); filter: blur(8px); }
-        .tech-zoom  { transform: scale(.5); filter: blur(12px); }
-        .tech-in    { opacity: 1; transform: none; filter: blur(0); }
-
-        .tech-word { transform: translateY(110%) rotate(6deg); transition: transform .8s cubic-bezier(.22,1,.36,1); }
-        .tech-word-in { transform: none; }
-
-        .tech-hex { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
-
-        .tech-radar {
-          background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, rgba(185,34,32,.55) 360deg);
-          -webkit-mask-image: radial-gradient(circle, #000 60%, transparent 100%);
-          mask-image: radial-gradient(circle, #000 60%, transparent 100%);
-          animation: techSpin 4s linear infinite;
+        .tech-section {
+          --ink: #111315;
+          --paper: #f4f3ed;
+          --paper-gradient: linear-gradient(135deg, #f8f7f2 0%, #edeae1 50%, #f4f3ed 100%);
+          --red: #e62e35;
+          --accent-card: #ffffff;
+          --border-gray: #d4cfc2;
+          padding: clamp(72px, 9vw, 144px) 0 32px;
+          background: var(--paper-gradient);
+          color: var(--ink);
+          font-family: system-ui, -apple-system, sans-serif;
+          isolation: isolate;
+          scroll-margin-top: 80px;
+          position: relative;
+          overflow: hidden;
         }
 
-        .tech-grid {
-          background-image:
-            linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
-          background-size: 48px 48px;
-          -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
-          mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
-          animation: techGrid 6s linear infinite;
+        .tech-section::before {
+          content: "";
+          position: absolute;
+          top: 10%;
+          left: 5%;
+          width: 500px;
+          height: 500px;
+          background: radial-gradient(circle, rgba(230, 46, 53, 0.05) 0%, transparent 70%);
+          border-radius: 50%;
+          z-index: 0;
+          animation: tech-ambient-shift 8s ease-in-out infinite alternate;
+          pointer-events: none;
         }
-        .tech-float    { animation: techFloat 10s ease-in-out infinite; }
-        .tech-scan     { animation: techScan 8s linear infinite; }
-        .tech-marquee  { animation: techMarquee 28s linear infinite; }
-        .tech-marquee:hover { animation-play-state: paused; }
-        .tech-packet-x { animation: techPacketX 3.2s linear infinite; }
-        .tech-packet-y { animation: techPacketY 3.2s linear infinite; }
 
-        @keyframes techGrid    { to { background-position: 48px 48px; } }
-        @keyframes techFloat   { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,-50px) scale(1.15); } }
-        @keyframes techScan    { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
-        @keyframes techSpin    { to { transform: rotate(360deg); } }
-        @keyframes techMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        @keyframes techPacketX { from { left: 0; } to { left: 100%; } }
-        @keyframes techPacketY { from { top: 0; } to { top: 100%; } }
+        .tech-container { position: relative; z-index: 1; width: 100%; }
+        .tech-eyebrow, .tech-chapter, .tech-exploreHint, .tech-consoleToolbar, .tech-detailEyebrow, .tech-benchmark, .tech-studyTopline, .tech-studyBottomline, .tech-colophon { display: flex; align-items: center; }
+        .tech-eyebrow, .tech-exploreHint, .tech-consoleToolbar, .tech-detailEyebrow, .tech-studyTopline, .tech-studyBottomline, .tech-footerEyebrow, .tech-colophon { font-family: monospace; font-size: 10px; font-weight: 500; letter-spacing: .09em; }
+        .tech-eyebrow { justify-content: space-between; gap: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--border-gray); }
+        .tech-eyebrow > span:first-child { display: flex; align-items: center; gap: 10px; }
+        .tech-redDot { width: 8px; height: 8px; flex-shrink: 0; background: var(--red); border-radius: 50%; box-shadow: 0 0 10px var(--red); animation: tech-pulse 1.2s infinite; }
+        .tech-chapter { color: #666; font-size: 9px; text-align: right; }
 
-        @media (prefers-reduced-motion: reduce) {
-          .tech-reveal, .tech-word { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; }
-          .tech-radar, .tech-grid, .tech-float, .tech-scan, .tech-marquee, .tech-packet-x, .tech-packet-y { animation: none !important; }
-        }
-      `}</style>
+        .tech-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .36fr); align-items: end; gap: 48px; padding: 48px 0 64px; }
+        .tech-header h2 { margin: 0; font-size: clamp(60px, 7.8vw, 112px); line-height: .99; font-weight: 500; letter-spacing: -.075em; color: var(--ink); min-width: 0; }
+        .tech-headingAccent { position: relative; font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-style: italic; letter-spacing: -.065em; color: var(--red); }
+        .tech-headingAccent svg { position: absolute; width: 104%; height: 15px; bottom: -9px; left: 0; overflow: visible; fill: none; stroke: var(--red); stroke-width: 1.8; stroke-linecap: round; }
+        .tech-headingPeriod { color: var(--red); }
+        .tech-headerAside { max-width: 270px; justify-self: end; min-width: 0; }
+        .tech-headerAside p { margin: 24px 0; color: #444; font-size: 15px; line-height: 1.7; }
+        .tech-exploreHint { gap: 16px; font-size: 9px; letter-spacing: .07em; color: var(--red); animation: none; }
+        .tech-registrationMark { position: relative; display: grid; grid-template-columns: repeat(2, 18px); gap: 3px; width: 39px; height: 39px; transform: rotate(-12deg); animation: tech-spin-slow 12s linear infinite; }
+        .tech-registrationMark > span { border-radius: 50%; background: var(--red); box-shadow: 0 0 5px rgba(230,46,53,0.5); }
+        .tech-registrationMark > span:nth-child(2) { background: #111; }
+        .tech-registrationMark > span:nth-child(3) { background: #888; }
+        .tech-registrationMark > span:nth-child(4) { background: #ccc; }
+        .tech-registrationMark i { position: absolute; width: 11px; height: 11px; background: #f7f6f0; left: 14px; top: 14px; border-radius: 50%; }
+
+        /* Bento Console Styling */
+        .tech-bentoConsole { background: transparent; display: grid; gap: 16px; }
+        .tech-consoleToolbar { justify-content: space-between; gap: 12px; padding: 12px 18px; background: rgba(255,255,255,0.6); border: 1px solid var(--border-gray); border-radius: 8px; color: #333; font-size: 9px; backdrop-filter: blur(8px); display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+        .tech-consoleLabel, .tech-consoleControls, .tech-interactiveLabel { display: inline-flex; align-items: center; gap: 10px; }
+        .tech-consoleLabel > svg { color: var(--red); animation: tech-pulse 2s infinite; }
+        .tech-consoleControls { gap: 18px; }
+        .tech-interactiveLabel { color: #555; font-size: 8px; font-weight: bold; }
+        .tech-interactiveLabel i { width: 6px; height: 6px; background: var(--red); border-radius: 50%; box-shadow: 0 0 8px var(--red); animation: tech-pulse 0.8s infinite; }
+        .tech-motionButton { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--border-gray); border-radius: 50%; color: var(--red); background: #fff; cursor: pointer; transition: all .3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); flex-shrink: 0; }
+        .tech-motionButton:hover { background: var(--red); color: #fff; border-color: var(--red); transform: scale(1.15) rotate(90deg); }
+
+        /* Bento Grid Selector Cards */
+        .tech-bentoGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; grid-auto-rows: 1fr; }
+        .tech-bentoCard { display: grid; grid-template-columns: minmax(0, 1fr); flex-direction: column; justify-content: normal; gap: 20px; padding: 24px; background: var(--accent-card); border: 1px solid var(--border-gray); border-radius: 12px; text-align: left; cursor: pointer; transition: all .4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 10px 25px -10px rgba(0,0,0,0.04); position: relative; overflow: hidden; grid-template-rows: auto 1fr auto; min-width: 0; min-height: 190px; }
+        .tech-bentoCard::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform .4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .tech-bentoCard:hover { transform: translateY(-4px); border-color: #b5ad9e; box-shadow: 0 15px 30px -10px rgba(230,46,53,0.12); }
+        .tech-bentoCard.is-active { background: #111315; color: #fff; border-color: #111315; transform: none; box-shadow: 0 20px 40px -15px rgba(0,0,0,0.25); }
+        .tech-bentoCard.is-active::before { transform: scaleX(1); }
+        .tech-bentoCardTop { display: flex; align-items: center; justify-content: space-between; }
+        .tech-bentoNumber { font-family: monospace; font-size: 12px; font-weight: bold; color: var(--red); }
+        .tech-bentoCard.is-active .tech-bentoNumber { color: #ff6b72; }
+        .tech-bentoIconBox { width: 36px; height: 36px; border-radius: 8px; background: #f4f3ed; display: grid; place-items: center; color: var(--ink); transition: background .3s; }
+        .tech-bentoCard.is-active .tech-bentoIconBox { background: rgba(255,255,255,0.1); color: #fff; }
+        .tech-bentoCategory { display: block; font-family: monospace; font-size: 9px; letter-spacing: 0.08em; color: #666; margin-bottom: 6px; }
+        .tech-bentoCard.is-active .tech-bentoCategory { color: #aaa; }
+        .tech-bentoTitle { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.25; }
+        .tech-bentoFooterIndicator { display: flex; align-items: center; justify-content: space-between; font-family: monospace; font-size: 8px; letter-spacing: 0.08em; color: #888; border-top: 1px solid rgba(128,128,128,0.15); padding-top: 12px; }
+        .tech-bentoCard.is-active .tech-bentoFooterIndicator { color: var(--red); border-color: rgba(255,255,255,0.1); }
+
+        /* Showcase Panel */
+        .tech-showcasePanel { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); background: #ffffff; border: 1px solid var(--border-gray); border-radius: 14px; overflow: hidden; box-shadow: 0 25px 50px -20px rgba(0,0,0,0.08); margin-top: 0; }
+        .tech-section button:focus-visible, .tech-contactLink:focus-visible, .tech-showcasePanel:focus-visible { outline: 2px solid var(--red); outline-offset: 5px; }
+
+        .tech-study { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #f8f7f2; border-right: 1px solid var(--border-gray); perspective: 1000px; display: flex; flex-direction: column; }
+        .tech-studyGrid { position: absolute; inset: 0; background-image: linear-gradient(rgba(230, 46, 53, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(230, 46, 53, 0.06) 1px, transparent 1px); background-size: 40px 40px; animation: tech-grid-move 15s linear infinite; }
+        .tech-study::after { content: ""; position: absolute; width: 300px; height: 60px; bottom: 80px; left: 50%; transform: translateX(-50%) rotate(-15deg); border-radius: 50%; background: rgba(230, 46, 53, 0.12); filter: blur(30px); pointer-events: none; animation: tech-shadow-pulse 3s ease-in-out infinite; }
+
+        .tech-orbit, .tech-orbitInner { position: absolute; top: 50%; left: 50%; width: 410px; height: 410px; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 50%; transform: translate(-50%, -50%) rotate(-25deg) scaleY(.8); animation: tech-orbit-turn 25s linear infinite; }
+        .tech-orbit::after { content: ""; position: absolute; inset: 18px; border: 1px dashed rgba(230, 46, 53, 0.25); border-radius: 50%; animation: tech-spin-slow 15s linear infinite reverse; }
+        .tech-orbitInner { width: 310px; height: 310px; border-color: rgba(230, 46, 53, 0.12); animation-direction: reverse; animation-duration: 18s; }
+
+        .tech-crosshair { position: absolute; color: rgba(230, 46, 53, 0.6); font-family: monospace; font-weight: bold; font-size: 24px; line-height: 1; }
+        .tech-crosshairTop { top: 70px; left: 28px; animation: tech-pulse 1.5s infinite; }
+        .tech-crosshairBottom { bottom: 70px; right: 28px; animation: tech-pulse 1.5s infinite 0.75s; }
+        .tech-studyTopline, .tech-studyBottomline { position: relative; justify-content: space-between; gap: 12px; z-index: 2; color: #555; font-size: 8px; letter-spacing: .08em; font-weight: bold; padding: 20px 24px; min-height: 52px; flex-shrink: 0; bottom: auto; }
+        .tech-studyTopline { top: auto; }
+        .tech-studyEdition { color: #111; font-weight: bold; }
+        .tech-studyBottomline { bottom: 28px; }
+        .tech-inkDots { display: flex; gap: 5px; }
+        .tech-inkDots i { width: 7px; height: 7px; border-radius: 50%; background: #111; animation: tech-glow 2s infinite alternate; }
+        .tech-inkDots i:nth-child(2) { background: var(--red); animation-delay: 0.4s; }
+        .tech-inkDots i:nth-child(3) { background: #888; animation-delay: 0.8s; }
+        .tech-inkDots i:nth-child(4) { background: #ccc; animation-delay: 1.2s; }
+
+        .tech-labelAssembly { position: absolute; z-index: 1; width: 220px; height: 290px; left: 50%; top: 45%; margin: -145px 0 0 -110px; transform: rotate(-17deg); animation: tech-levitate 5s ease-in-out infinite; scale: var(--tech-art-scale, .9); animation-play-state: paused; }
+        .tech-labelLayer { position: absolute; inset: 0; border-radius: 4px 4px 16px 4px; box-shadow: 0 20px 40px rgba(0,0,0,0.12); transition: transform 0.8s cubic-bezier(.16,1,.3,1), background .5s; }
+        .tech-baseLayer { background: #e5e3d8; transform: translate(-23px, 53px) rotate(-8deg); border: 1px solid #ccc; animation: none; }
+        .tech-colorLayer { background: #cce7d4; transform: translate(0, 15px) rotate(1deg); overflow: hidden; border: 1px solid #a8d5b5; animation: none; }
+        .tech-topLayer { padding: 26px 22px 17px; color: #111; background: #ffffff; transform: translate(22px, -34px) rotate(8deg); overflow: hidden; border: 1px solid var(--red); box-shadow: 0 0 25px rgba(230, 46, 53, 0.2); animation: none; }
+
+        .tech-layerHole { position: absolute; width: 9px; height: 9px; left: calc(50% - 4.5px); top: 12px; border-radius: 50%; background: #f4f3ed; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
+        .tech-baseLines { position: absolute; inset: 36px 18px; background: repeating-linear-gradient(0deg, transparent 0 7px, rgba(0,0,0,0.06) 7px 8px); }
+        .tech-materialNote { position: absolute; bottom: 13px; left: 18px; font-family: monospace; font-size: 7px; letter-spacing: .12em; color: #666; font-weight: bold; }
+        .tech-colorBars { position: absolute; inset: 40px 18px 35px; display: flex; gap: 5px; transform: rotate(-20deg) scale(1.6); }
+        .tech-colorBars span { flex: 1; background: var(--red); box-shadow: 0 0 6px var(--red); }
+        .tech-colorBars span:nth-child(2) { background: #111111; }
+        .tech-colorBars span:nth-child(3) { background: #888888; }
+        .tech-colorBars span:nth-child(4) { background: #cccccc; }
+        .tech-colorBars span:nth-child(5) { background: #ff7777; }
+        .tech-colorNote { position: absolute; bottom: 12px; left: 17px; font-family: monospace; font-size: 7px; color: #333; letter-spacing: .06em; font-weight: bold; }
+
+        .tech-tagBrand { display: flex; align-items: center; gap: 9px; padding-bottom: 17px; border-bottom: 1px solid var(--border-gray); color: var(--red); font-size: 28px; font-weight: 700; letter-spacing: -.08em; line-height: 1; text-shadow: 0 0 8px rgba(230,46,53,0.3); }
+        .tech-tagBrand span { max-width: 50px; color: #444; font-size: 6px; font-weight: 600; line-height: 1.6; letter-spacing: .12em; }
+        .tech-tagTitle { margin: 30px 0 26px; font-size: 25px; font-weight: 600; letter-spacing: -.065em; line-height: 1.1; color: #111; }
+        .tech-tagTitle > span { color: var(--red); }
+        .tech-tagBottom { display: flex; align-items: end; justify-content: space-between; gap: 15px; }
+        .tech-barcode { width: 100px; height: 35px; background: repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 4px, #111 4px 5px, transparent 5px 8px, #111 8px 12px, transparent 12px 14px, #111 14px 15px, transparent 15px 18px, #111 18px 21px, transparent 21px 23px); }
+        .tech-tagSerial { display: block; margin-top: 12px; font-family: monospace; font-size: 6px; letter-spacing: .1em; color: #555; font-weight: bold; }
+
+        .tech-scanBeam { position: absolute; top: 10%; left: 0; right: 0; height: 3px; background: var(--red); box-shadow: 0 0 20px 5px var(--red); opacity: 0; animation: tech-scan 2s ease-in-out infinite; animation-play-state: paused; }
+        .tech-cutGuide { position: absolute; inset: 8px; border: 1px dashed rgba(230,46,53,0.8); opacity: 0; transition: opacity .4s; animation: none; }
+
+        .tech-layerNotes { position: relative; z-index: 2; display: grid; gap: 30px; min-width: 0; animation: tech-detailEnter .5s both; }
+        .tech-layerNotes > span { display: flex; align-items: center; gap: 6px; color: #333; font-family: monospace; font-size: 8px; font-weight: bold; animation: tech-slide-up 0.5s ease; white-space: nowrap; }
+        .tech-layerNotes i { width: 17px; height: 1px; background: var(--red); box-shadow: 0 0 5px var(--red); flex-shrink: 0; }
+        .tech-layerNotes small { margin-left: auto; color: var(--red); font-size: 7px; font-weight: bold; }
+
+        .tech-study[data-process="encode"] .tech-topLayer { transform: translate(10px, -23px) rotate(3deg); }
+        .tech-study[data-process="encode"] .tech-scanBeam { opacity: 1; }
+        .tech-study[data-process="connect"] .tech-baseLayer { transform: translate(-32px, 65px) rotate(-16deg); }
+        .tech-study[data-process="connect"] .tech-colorLayer { transform: translate(0, 15px) rotate(0); }
+        .tech-study[data-process="connect"] .tech-topLayer { transform: translate(28px, -47px) rotate(16deg); background: #fff; }
+        .tech-study[data-process="finish"] .tech-baseLayer { transform: translate(-5px, 9px) rotate(0); }
+        .tech-study[data-process="finish"] .tech-colorLayer { transform: translate(0, 4px) rotate(0); }
+        .tech-study[data-process="finish"] .tech-topLayer { transform: translate(5px, -2px) rotate(0); }
+        .tech-study[data-process="finish"] .tech-cutGuide { opacity: 1; }
+
+        .tech-details { min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 24px; padding: clamp(24px, 3vw, 42px); background: #ffffff; }
+        .tech-detailsContent { animation: tech-detailEnter .5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .tech-detailEyebrow { gap: 9px; color: var(--red); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; font-weight: bold; }
+        .tech-detailEyebrow svg { flex-shrink: 0; animation: tech-pulse 1.5s infinite; }
+        .tech-detailCount { margin-left: auto; color: #666; font-size: 8px; white-space: nowrap; font-weight: bold; }
+        .tech-details h3 { margin: 29px 0 18px; color: #111; font-size: clamp(25px, 2.8vw, 39px); font-weight: 500; line-height: 1.15; letter-spacing: -.05em; }
+        .tech-details h3 > span { display: block; animation: tech-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .tech-description { margin: 0; color: #444; font-size: 13px; line-height: 1.85; max-width: 48ch; }
+        .tech-metric { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; margin: 29px 0 15px; }
+        .tech-metric strong { color: #111; font-size: clamp(43px, 4vw, 58px); font-weight: 600; line-height: 1; letter-spacing: -.065em; animation: tech-glow 3s infinite alternate; }
+        .tech-metric > span { max-width: 120px; color: #666; font-size: 11px; line-height: 1.5; font-weight: 500; }
+        .tech-benchmark { align-items: flex-start; gap: 8px; color: #333; font-size: 10px; letter-spacing: -.01em; line-height: 1.6; font-weight: 500; }
+        .tech-benchmark svg { margin-top: 1px; color: var(--red); flex-shrink: 0; animation: tech-bounce 1.5s infinite; }
+        .tech-detailFootnote { display: flex; align-items: center; gap: 12px; padding-top: 22px; border-top: 1px solid var(--border-gray); color: #555; font-family: Georgia, serif; font-style: italic; font-size: 13px; }
+        .tech-footnoteLine { width: 21px; height: 1px; flex-shrink: 0; background: var(--red); box-shadow: 0 0 8px var(--red); animation: tech-pulse 2s infinite; }
+
+        .tech-footer { display: grid; align-items: center; justify-content: space-between; gap: 36px; padding: 44px 0; border-top: 1px solid var(--border-gray); margin-top: 40px; grid-template-columns: minmax(0, 1fr) minmax(240px, .55fr); }
+        .tech-turnaround { display: grid; align-items: center; gap: 29px; grid-template-columns: 104px minmax(0, 1fr); min-width: 0; }
+        .tech-timeMark { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; width: 104px; height: 119px; padding: 15px; background: var(--red); color: #fff; clip-path: polygon(0 0, 100% 0, 100% 82%, 80% 100%, 0 100%); transform: rotate(-6deg); flex-shrink: 0; box-shadow: 0 5px 20px rgba(230,46,53,0.4); animation: tech-float-badge 3.5s ease-in-out infinite; }
+        .tech-timeMark > span { font-size: 49px; font-weight: 700; letter-spacing: -.085em; line-height: 1; }
+        .tech-timeMark small { margin-top: 7px; font-family: monospace; font-size: 8px; letter-spacing: .16em; font-weight: bold; }
+        .tech-timeMark svg { position: absolute; top: 12px; right: 12px; animation: tech-spin-slow 8s linear infinite; }
+        .tech-footerEyebrow { color: var(--red); font-size: 8px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: bold; }
+        .tech-turnaround h3 { margin: 9px 0; color: #111; font-size: clamp(22px, 2.4vw, 31px); font-weight: 600; letter-spacing: -.05em; line-height: 1.15; }
+        .tech-turnaround p { margin: 0; color: #555; font-size: 11px; line-height: 1.8; }
+
+        .tech-contactLink { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-width: 0; padding: 20px 0; border-bottom: 1px solid var(--border-gray); color: #111; text-decoration: none; transition: all .3s; }
+        .tech-contactLink > span:first-child { font-size: 20px; font-weight: 600; letter-spacing: -.04em; }
+        .tech-contactLink small { display: block; margin-top: 8px; color: #666; font-family: monospace; font-size: 8px; font-weight: bold; letter-spacing: .04em; }
+        .tech-contactArrow { display: grid; place-items: center; width: 50px; height: 50px; flex-shrink: 0; border-radius: 50%; background: var(--red); color: white; transition: transform .4s cubic-bezier(0.16, 1, 0.3, 1), background .3s, box-shadow .3s; box-shadow: 0 4px 15px rgba(230,46,53,0.4); animation: tech-pulse 2s infinite; }
+        .tech-contactLink:hover .tech-contactArrow { transform: rotate(45deg) scale(1.15); background: #ff3b42; box-shadow: 0 6px 20px rgba(230,46,53,0.7); }
+        .tech-colophon { flex-wrap: wrap; justify-content: space-between; gap: 24px; padding-top: 20px; border-top: 1px solid var(--border-gray); color: #666; font-size: 8px; letter-spacing: .06em; font-weight: bold; }
+        .tech-colophon > span:last-child { display: flex; align-items: center; gap: 12px; color: var(--red); }
+
+        /* Heavy Animation Keyframes & Dynamic Triggers */
+        .tech-section [data-revealed="true"] { animation: tech-reveal .8s cubic-bezier(.16, 1, 0.3, 1) both; }
+        .tech-section[data-in-view="true"] .tech-labelAssembly, .tech-section[data-in-view="true"] .tech-scanBeam { animation-play-state: running; }
+        .tech-section[data-motion="paused"] .tech-labelAssembly,
+        .tech-section[data-motion="paused"] .tech-scanBeam,
+        .tech-section[data-motion="paused"] .tech-orbit,
+        .tech-section[data-motion="paused"] .tech-orbitInner,
+        .tech-section[data-motion="paused"] .tech-timeMark,
+        .tech-section[data-motion="paused"] .tech-studyGrid,
+        .tech-section[data-motion="paused"]::before { animation-play-state: paused !important; }
+
+        @keyframes tech-reveal { from { opacity: 0; transform: translateY(35px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes tech-detailEnter { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes tech-levitate { 0%, 100% { transform: translateY(0) rotate(-17deg); } 50% { transform: translateY(-18px) rotate(-14deg); } }
+        @keyframes tech-float-layer1 { 0%, 100% { transform: translate(-23px, 53px) rotate(-8deg); } 50% { transform: translate(-28px, 48px) rotate(-6deg); } }
+        @keyframes tech-float-layer2 { 0%, 100% { transform: translate(0, 15px) rotate(1deg); } 50% { transform: translate(4px, 10px) rotate(3deg); } }
+        @keyframes tech-float-layer3 { 0%, 100% { transform: translate(22px, -34px) rotate(8deg); } 50% { transform: translate(18px, -40px) rotate(10deg); } }
+        @keyframes tech-scan { 0%, 100% { top: 15%; } 50% { top: 88%; } }
+        @keyframes tech-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.92); } }
+        @keyframes tech-spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes tech-grid-move { from { background-position: 0 0; } to { background-position: 40px 40px; } }
+        @keyframes tech-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+        @keyframes tech-glow { from { opacity: 0.8; } to { opacity: 1; transform: scale(1.02); } }
+        @keyframes tech-slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes tech-float-badge { 0%, 100% { transform: rotate(-6deg) translateY(0); } 50% { transform: rotate(-6deg) translateY(-10px); } }
+        @keyframes tech-ambient-shift { 0% { transform: scale(1) translate(0, 0); opacity: 0.4; } 50% { transform: scale(1.2) translate(30px, -20px); opacity: 0.8; } 100% { transform: scale(1) translate(0, 0); opacity: 0.4; } }
+
+
+         .tech-detailEyebrow > span:not(.tech-detailCount) { min-width: 0; }
+         /* The artwork and annotations have separate layout areas. */
+         .tech-studyCanvas { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) 95px; gap: 20px; align-items: center; flex: 1; padding: 0 24px; }
+         .tech-artboard { position: relative; min-width: 0; height: 440px; container: tech-art / inline-size; }
+         .tech-consoleLabel { min-width: 0; line-height: 1.6; }
+         .tech-consoleLabel > svg, .tech-consoleControls { flex-shrink: 0; }
+         .tech-exploreHint > svg { flex-shrink: 0; animation: tech-bounce 2s infinite; }
+         .tech-headerAside p, .tech-description, .tech-turnaround p { overflow-wrap: break-word; }
+         .tech-bentoCardTop, .tech-bentoFooterIndicator { gap: 12px; }
+         .tech-bentoFooterIndicator { align-self: end; }
+         .tech-metric strong { animation: tech-metric-glow 3s infinite alternate; }
+         .tech-contactLink > span:first-child { min-width: 0; }
+         .tech-colophon > span:last-child { flex-wrap: wrap; }
+         @keyframes tech-orbit-turn { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+         @keyframes tech-shadow-pulse { 0%, 100% { opacity: .4; } 50% { opacity: .8; } }
+         @keyframes tech-metric-glow { from { opacity: .8; } to { opacity: 1; } }
+
+         @container tech-art (max-width: 380px) {
+           .tech-labelAssembly { --tech-art-scale: .78; }
+         }
+         @container tech-art (max-width: 320px) {
+           .tech-labelAssembly { --tech-art-scale: .68; }
+         }
+         @container tech-art (max-width: 260px) {
+           .tech-labelAssembly { --tech-art-scale: .58; }
+         }
+
+         @media (max-width: 1100px) {
+           .tech-bentoGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+         }
+
+         @media (max-width: 1023px) {
+           .tech-showcasePanel { grid-template-columns: minmax(0, 1fr); }
+           .tech-study { border-right: 0; border-bottom: 1px solid var(--border-gray); }
+           .tech-details { gap: 28px; padding: 32px; }
+           .tech-description { max-width: 64ch; }
+           .tech-details h3 { font-size: clamp(28px, 4.5vw, 36px); }
+           .tech-metric strong { font-size: 52px; }
+           .tech-detailFootnote { margin-top: 4px; }
+         }
+
+         @media (max-width: 960px) {
+           .tech-header { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 36px 0 48px; }
+           .tech-header h2 { font-size: clamp(48px, 9vw, 88px); }
+           .tech-headerAside { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px 20px; align-items: center; justify-self: start; max-width: 460px; }
+           .tech-registrationMark { grid-row: span 2; }
+           .tech-headerAside p { margin: 0; font-size: 14px; }
+           .tech-exploreHint { grid-column: 2; font-size: 8px; }
+           .tech-footer { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 32px 0; margin-top: 32px; }
+           .tech-contactLink { justify-self: end; width: min(100%, 320px); }
+         }
+
+         @media (max-width: 640px) {
+           .tech-section { padding: 64px 0 24px; }
+           .tech-eyebrow { flex-wrap: wrap; gap: 12px; padding-bottom: 18px; font-size: 9px; }
+           .tech-chapter { font-size: 8px; text-align: left; }
+           .tech-header { padding-bottom: 36px; gap: 28px; }
+           .tech-consoleToolbar { padding: 10px 14px; }
+           .tech-interactiveLabel { display: none; }
+           .tech-bentoGrid { gap: 12px; }
+           .tech-bentoCard { padding: 20px; gap: 16px; min-height: 180px; }
+           .tech-bentoTitle { font-size: 16px; }
+           .tech-bentoCategory { font-size: 8px; line-height: 1.5; }
+           .tech-bentoConsole { gap: 12px; }
+           .tech-studyCanvas { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0 20px; }
+           .tech-artboard { height: 400px; }
+          .tech-labelAssembly { scale: min(.82, var(--tech-art-scale, .9)); }
+           .tech-layerNotes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0 0 8px; }
+           .tech-layerNotes > span { gap: 5px; font-size: 8px; }
+           .tech-layerNotes i { width: 12px; }
+           .tech-layerNotes small { font-size: 7px; }
+           .tech-studyTopline, .tech-studyBottomline { padding: 18px 20px; font-size: 7px; }
+           .tech-crosshairTop { top: 60px; left: 18px; }
+           .tech-crosshairBottom { bottom: 90px; right: 18px; }
+           .tech-details { padding: 26px 24px; }
+           .tech-detailEyebrow { font-size: 8px; }
+           .tech-details h3 { margin-top: 24px; font-size: clamp(27px, 5.5vw, 34px); }
+           .tech-description { font-size: 13px; }
+           .tech-metric { gap: 8px 14px; margin-top: 24px; }
+           .tech-metric strong { font-size: 48px; }
+           .tech-turnaround { grid-template-columns: 84px minmax(0, 1fr); gap: 22px; }
+           .tech-timeMark { width: 84px; height: 102px; padding: 12px; }
+           .tech-timeMark > span { font-size: 41px; }
+           .tech-timeMark svg { width: 14px; top: 10px; right: 9px; }
+           .tech-turnaround h3 { font-size: 26px; }
+           .tech-contactLink { justify-self: stretch; width: 100%; padding: 16px 0; }
+           .tech-colophon { align-items: flex-start; gap: 10px; font-size: 7px; }
+           .tech-colophon > span:last-child { gap: 8px; }
+         }
+
+         @media (max-width: 479px) {
+           .tech-header h2 { font-size: clamp(40px, 11vw, 52px); line-height: 1.05; }
+           .tech-headerAside { gap: 10px 16px; }
+           .tech-headerAside p { font-size: 13px; }
+           .tech-headingAccent svg { bottom: -8px; height: 12px; }
+           .tech-bentoGrid { grid-template-columns: minmax(0, 1fr); }
+           .tech-bentoCard { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 14px; min-height: 0; padding: 18px; }
+           .tech-bentoCardTop { grid-column: 2; grid-row: 1; gap: 10px; }
+           .tech-bentoCard > div:nth-child(2) { grid-column: 1; grid-row: 1; align-self: center; min-width: 0; }
+           .tech-bentoFooterIndicator { grid-column: 1 / -1; padding-top: 10px; }
+           .tech-bentoNumber { font-size: 10px; }
+           .tech-bentoIconBox { width: 30px; height: 30px; }
+           .tech-studyCanvas { padding: 0 16px; }
+           .tech-artboard { height: 350px; }
+          .tech-labelAssembly { scale: min(.68, var(--tech-art-scale, .9)); }
+           .tech-layerNotes { gap: 8px; }
+           .tech-layerNotes > span { font-size: 7px; gap: 4px; }
+           .tech-layerNotes i { width: 8px; }
+           .tech-layerNotes small { font-size: 6px; }
+           .tech-studyTopline, .tech-studyBottomline { padding: 18px 16px; letter-spacing: .04em; }
+           .tech-details { padding: 24px 20px; }
+           .tech-detailEyebrow { gap: 7px; font-size: 7px; }
+           .tech-detailCount { font-size: 7px; }
+           .tech-metric > span { max-width: 115px; font-size: 10px; }
+           .tech-benchmark { font-size: 9px; }
+           .tech-turnaround { grid-template-columns: 72px minmax(0, 1fr); align-items: start; gap: 18px; }
+           .tech-timeMark { width: 72px; height: 92px; padding: 10px; margin-top: 8px; }
+           .tech-timeMark > span { font-size: 36px; }
+           .tech-timeMark small { font-size: 7px; }
+           .tech-footerEyebrow { font-size: 7px; }
+           .tech-turnaround h3 { font-size: 23px; }
+           .tech-turnaround p { font-size: 11px; }
+           .tech-contactLink > span:first-child { font-size: 19px; }
+           .tech-contactArrow { width: 46px; height: 46px; }
+         }
+
+         @media (hover: none) {
+           .tech-bentoCard:hover { transform: none; }
+         }
+
+         @media (prefers-reduced-motion: reduce) {
+           .tech-section, .tech-section *, .tech-section::before, .tech-section *::before, .tech-section *::after { animation: none !important; transition: none !important; }
+           .tech-motionButton { display: none; }
+         }
+       `}</style>
     </section>
   )
 }
