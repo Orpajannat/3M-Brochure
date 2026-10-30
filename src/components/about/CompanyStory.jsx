@@ -1,144 +1,47 @@
-"use client"
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Building2,
-  Award,
-  Globe2,
-  Target,
-  Sparkles,
-  ShieldCheck,
-  ArrowRight,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
+"use client";
 
-/* ------------------------------------------------------------------ */
-/*  Hooks & small helpers                                              */
-/* ------------------------------------------------------------------ */
+import { useEffect, useRef, useState } from "react";
+import { DM_Sans, Instrument_Serif } from "next/font/google";
 
-// Fires once when the element scrolls into view
-function useInView(threshold = 0.15) {
-  const ref = useRef(null);
-  const [inView, setInView] = useState(false);
+const serif = Instrument_Serif({
+  weight: "400",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-story-serif",
+});
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          io.disconnect();
-        }
-      },
-      { threshold }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [threshold]);
+const sans = DM_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-story-sans",
+});
 
-  return [ref, inView];
-}
-
-// Counts from `from` to `to` once `active` becomes true
-function useCountUp(to, active, { from = 0, duration = 1800 } = {}) {
-  const [value, setValue] = useState(from);
-
-  useEffect(() => {
-    if (!active) return;
-    const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      setValue(to);
-      return;
-    }
-    let raf;
-    const start = performance.now();
-    const tick = (now) => {
-      const p = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 4); // easeOutQuart
-      setValue(Math.round(from + (to - from) * eased));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [active, to, from, duration]);
-
-  return value;
-}
-
-// Scroll-reveal wrapper with stagger delay
-function Reveal({ children, delay = 0, className = "", direction = "up" }) {
-  const [ref, inView] = useInView();
-  const from =
-    direction === "left"
-      ? "-translate-x-8"
-      : direction === "right"
-      ? "translate-x-8"
-      : "translate-y-8";
-
-  return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-out will-change-transform ${
-        inView ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${from}`
-      } ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-// Writes the cursor position into CSS variables for spotlight effects
-const trackSpotlight = (e) => {
-  const rect = e.currentTarget.getBoundingClientRect();
-  e.currentTarget.style.setProperty("--mx", `${e.clientX - rect.left}px`);
-  e.currentTarget.style.setProperty("--my", `${e.clientY - rect.top}px`);
-};
-
-const spotlightBg = {
-  background:
-    "radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), rgba(244,63,94,0.16), transparent 70%)",
-};
-
-/* ------------------------------------------------------------------ */
-/*  Data                                                               */
-/* ------------------------------------------------------------------ */
-
-const milestones = [
+const chapters = [
   {
     year: "1988",
-    title: "Establishment in Canada",
-    description:
-      "Founded in Canada with a vision to deliver world-class apparel accessories and private labeling solutions.",
-    icon: Building2,
-    accent: "from-rose-500/10 to-red-500/5",
+    label: "THE BEGINNING",
+    title: "A foundation built on precision.",
+    text: "Our journey began in Canada with a commitment to quality, dependable service, and attention to every detail.",
+    number: "01",
   },
   {
-    year: "Global Hubs",
-    title: "Label Bank Asia Synergy",
-    description:
-      "Operates as a key sister concern of Label Bank Asia, expanding manufacturing hubs across Bangladesh and Thailand.",
-    icon: Globe2,
-    accent: "from-rose-500/10 to-pink-500/5",
+    year: "GLOBAL",
+    label: "EXPANDING CONNECTIONS",
+    title: "Growing beyond boundaries.",
+    text: "International connections brought together expertise, production capabilities, and new opportunities.",
+    number: "02",
   },
   {
-    year: "Core Mission",
-    title: "Commitment to Excellence",
-    description:
-      'Driven by a clear operational principle: "Our mission is not to be the biggest in this business, simply the best!"',
-    icon: Target,
-    accent: "from-red-500/10 to-rose-600/5",
+    year: "TODAY",
+    label: "BUILT ON TRUST",
+    title: "One purpose. Multiple connections.",
+    text: "Our connection with Label Bank Asia and operations across Bangladesh and Thailand supports our continuing journey.",
+    number: "03",
   },
 ];
 
-const ticker = [
+const services = [
   "Garment Accessories",
   "Thermal Branding Labels",
   "Offset Swing Tickets",
@@ -149,376 +52,781 @@ const ticker = [
   "Precision Quality Control",
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+const heroLines = [
+  [{ t: "The" }, { t: "details" }, { t: "make" }],
+  [{ t: "the", red: true }, { t: "difference.", red: true }],
+];
+
+const missionWords = ["Not", "to", "be", "the", "biggest."];
+const closingWords = ["Good", "work", "lives", "in", "the", "details."];
+const fxCycle = ["sudden-zoom-in", "sudden-pop-up", "sudden-appear", "sudden-zoom-out"];
+
+const sentence = (value) => value.charAt(0) + value.slice(1).toLowerCase();
 
 export default function CompanyStory() {
-  // Dark card: tilt + counters
-  const [cardRef, cardInView] = useInView(0.3);
-  const year = useCountUp(1988, cardInView, { from: 1900, duration: 1800 });
-  const hours = useCountUp(72, cardInView, { from: 0, duration: 1600 });
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [active, setActive] = useState(0);
+  const [previous, setPrevious] = useState(null);
+  const [hold, setHold] = useState(false);
+  const rootRef = useRef(null);
+  const heroRef = useRef(null);
+  const yearRef = useRef(null);
+  const leaveTimer = useRef(0);
 
-  const handleTilt = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width - 0.5;
-    const py = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: py * -6, y: px * 6 });
-    trackSpotlight(e);
-  };
+  function goTo(next) {
+    if (next === active) return;
+    setPrevious(active);
+    setActive(next);
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => setPrevious(null), 520);
+  }
+
+  useEffect(() => () => clearTimeout(leaveTimer.current), []);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+    root.classList.add("story-ready");
+
+    // Force initial elements to trigger immediately on load
+    root.querySelectorAll(".fx").forEach((node) => node.classList.add("in"));
+
+    let lastScrollY = window.scrollY;
+
+    const reveal = new IntersectionObserver(
+      (entries) => {
+        const isScrollingDown = window.scrollY > lastScrollY;
+        lastScrollY = window.scrollY;
+
+        entries.forEach((entry) => {
+          const el = entry.target;
+
+          if (entry.isIntersecting) {
+            el.classList.remove("out-top", "out-bottom");
+            el.classList.add("in");
+          } else {
+            el.classList.remove("in");
+            if (isScrollingDown) {
+              el.classList.add("out-top");
+              el.classList.remove("out-bottom");
+            } else {
+              el.classList.add("out-bottom");
+              el.classList.remove("out-top");
+            }
+          }
+        });
+      },
+      { threshold: 0.05, rootMargin: "0px 0px -30px 0px" }
+    );
+
+    root.querySelectorAll(".fx").forEach((node) => reveal.observe(node));
+
+    let scrollFrame = 0;
+    const measure = () => {
+      scrollFrame = 0;
+      const box = root.getBoundingClientRect();
+      const total = box.height - window.innerHeight;
+      const progress = total > 0 ? Math.min(1, Math.max(0, -box.top / total)) : 0;
+      root.style.setProperty("--p", progress.toFixed(4));
+    };
+    const onScroll = () => {
+      if (!scrollFrame) scrollFrame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    const hero = heroRef.current;
+    let moveFrame = 0;
+    const onMove = (event) => {
+      const box = hero.getBoundingClientRect();
+      const x = ((event.clientX - box.left) / box.width - 0.5) * 2;
+      const y = ((event.clientY - box.top) / box.height - 0.5) * 2;
+      if (moveFrame) return;
+      moveFrame = requestAnimationFrame(() => {
+        moveFrame = 0;
+        hero.style.setProperty("--mx", x.toFixed(3));
+        hero.style.setProperty("--my", y.toFixed(3));
+      });
+    };
+    const onLeave = () => {
+      hero.style.setProperty("--mx", "0");
+      hero.style.setProperty("--my", "0");
+    };
+    if (hero && fine && !reduce) {
+      hero.addEventListener("pointermove", onMove);
+      hero.addEventListener("pointerleave", onLeave);
+    }
+
+    const yearEl = yearRef.current;
+    let countFrame = 0;
+    if (yearEl && !reduce) {
+      const from = 1900;
+      const to = 1988;
+      const duration = 1400;
+      const start = performance.now() + 400;
+      yearEl.textContent = String(from);
+      const tick = (now) => {
+        const t = Math.min(1, Math.max(0, (now - start) / duration));
+        const eased = 1 - Math.pow(1 - t, 4);
+        yearEl.textContent = String(Math.round(from + (to - from) * eased));
+        if (t < 1) countFrame = requestAnimationFrame(tick);
+      };
+      countFrame = requestAnimationFrame(tick);
+    }
+
+    return () => {
+      reveal.disconnect();
+      cancelAnimationFrame(scrollFrame);
+      cancelAnimationFrame(moveFrame);
+      cancelAnimationFrame(countFrame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      hero?.removeEventListener("pointermove", onMove);
+      hero?.removeEventListener("pointerleave", onLeave);
+    };
+  }, []);
+
+  const renderChapter = (item, className, hidden) => (
+    <div
+      className={`chapter-view flex min-h-[380px] flex-col justify-between p-8 sm:min-h-[420px] sm:p-12 ${className}`}
+      aria-hidden={hidden ? "true" : undefined}
+    >
+      <span className="giant serif" aria-hidden="true">
+        {item.number}
+      </span>
+      <div className="relative z-10">
+        <div className="flex items-center gap-3">
+          <span className="h-0.5 w-10 bg-[#C21F30]" />
+          <span className="text-xs font-bold uppercase tracking-widest text-[#C21F30]">
+            Chapter {item.number}
+          </span>
+        </div>
+        <h3 className="serif mt-6 max-w-lg text-[clamp(2.2rem,4vw,3.2rem)] leading-[1.05] tracking-tight text-[#171717]">
+          {item.title}
+        </h3>
+        <p className="mt-4 max-w-md text-base leading-7 text-black/70">
+          {item.text}
+        </p>
+      </div>
+      <div className="relative z-10 mt-10 flex items-center justify-between border-t border-black/10 pt-5 text-xs font-semibold uppercase tracking-wider text-black/50">
+        <span>Our continuing journey</span>
+        <span className="font-bold text-[#C21F30]">{item.number} / 03</span>
+      </div>
+    </div>
+  );
 
   return (
     <section
-      id="company-story"
-      className="relative w-full overflow-hidden bg-gradient-to-b from-white via-slate-50/70 to-white py-16 sm:py-24 lg:py-32 text-slate-800"
+      ref={rootRef}
+      className={`${serif.variable} ${sans.variable} company-story relative bg-[#F7F7F8] text-[#171717] [overflow-x:clip]`}
     >
-      {/* Keyframes live here so no tailwind.config changes are needed */}
-      <style>{`
-        @keyframes cs-drift-a { 0%,100% { transform: translate(0,0) scale(1);} 50% { transform: translate(60px,-40px) scale(1.15);} }
-        @keyframes cs-drift-b { 0%,100% { transform: translate(0,0) scale(1);} 50% { transform: translate(-70px,50px) scale(1.2);} }
-        @keyframes cs-float { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-14px);} }
-        @keyframes cs-rise { 0% { transform: translateY(0) scale(1); opacity: 0;} 15% { opacity: .8;} 100% { transform: translateY(-260px) scale(.4); opacity: 0;} }
-        @keyframes cs-shimmer-text { 0% { background-position: 0% 50%;} 100% { background-position: 200% 50%;} }
-        @keyframes cs-marquee { from { transform: translateX(0);} to { transform: translateX(-50%);} }
-        @keyframes cs-spin { to { transform: rotate(360deg);} }
-        @keyframes cs-travel { 0% { left: 0; opacity: 0;} 10% { opacity: 1;} 90% { opacity: 1;} 100% { left: 100%; opacity: 0;} }
-        @keyframes cs-wiggle { 0%,100% { transform: rotate(0) scale(1.1);} 25% { transform: rotate(-10deg) scale(1.15);} 75% { transform: rotate(10deg) scale(1.15);} }
-        @keyframes cs-ring { 0% { transform: scale(.9); opacity: .6;} 100% { transform: scale(1.8); opacity: 0;} }
+      <div className="scroll-bar" aria-hidden="true" />
 
-        .cs-drift-a { animation: cs-drift-a 16s ease-in-out infinite; }
-        .cs-drift-b { animation: cs-drift-b 20s ease-in-out infinite; }
-        .cs-float { animation: cs-float 6s ease-in-out infinite; }
-        .cs-rise { animation: cs-rise 7s ease-in infinite; }
-        .cs-shimmer-text { background-size: 200% auto; animation: cs-shimmer-text 5s linear infinite; }
-        .cs-marquee { animation: cs-marquee 32s linear infinite; }
-        .cs-marquee-wrap:hover .cs-marquee { animation-play-state: paused; }
-        .cs-spin { animation: cs-spin 6s linear infinite; }
-        .cs-travel { animation: cs-travel 5s ease-in-out infinite; }
-        .cs-ring { animation: cs-ring 2.4s ease-out infinite; }
-        .group:hover .cs-wiggle { animation: cs-wiggle .6s ease-in-out; }
+      {/* HERO SECTION */}
+      <div ref={heroRef} className="hero relative overflow-hidden bg-[#111111] py-20 text-white md:py-32">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 lg:grid-cols-[1.2fr_.8fr] lg:gap-16">
+          <div className="hero-copy z-10">
+            <div className="fx mb-8 flex items-center gap-3" data-fx="sudden-appear">
+              <span className="ping" />
+              <p className="text-xs font-bold uppercase tracking-widest text-[#F06A70]">
+                A story of quality · Since 1988
+              </p>
+            </div>
 
-        @media (prefers-reduced-motion: reduce) {
-          .cs-drift-a, .cs-drift-b, .cs-float, .cs-rise, .cs-shimmer-text,
-          .cs-marquee, .cs-spin, .cs-travel, .cs-ring { animation: none !important; }
-          .group:hover .cs-wiggle { animation: none !important; }
-        }
-      `}</style>
+            <h1 className="serif text-[clamp(2.8rem,6vw,5.5rem)] leading-[0.98] tracking-tight">
+              {heroLines.map((line, li) => (
+                <span key={li} className="block">
+                  {line.map((word, wi) => {
+                    const order = li * 3 + wi;
+                    return (
+                      <span key={word.t} className="inline-block overflow-hidden">
+                        <span
+                          className={`fx word inline-block ${word.red ? "text-[#F06A70] italic" : ""}`}
+                          data-fx="slam"
+                          style={{ "--d": `${100 + order * 120}ms` }}
+                        >
+                          {word.t}
+                        </span>{" "}
+                      </span>
+                    );
+                  })}
+                </span>
+              ))}
+            </h1>
 
-      {/* ---------- Ambient background ---------- */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(to_right,rgba(244,63,94,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(244,63,94,0.07)_1px,transparent_1px)] [background-size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
-      />
-      <div
-        aria-hidden
-        className="cs-drift-a pointer-events-none absolute top-1/4 -left-28 h-72 w-72 sm:h-96 sm:w-96 rounded-full bg-rose-200/60 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="cs-drift-b pointer-events-none absolute bottom-1/4 -right-28 h-72 w-72 sm:h-96 sm:w-96 rounded-full bg-red-200/50 blur-3xl"
-      />
-      {/* Rising particles */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-72 hidden sm:block">
-        {[8, 22, 37, 52, 66, 81, 93].map((left, i) => (
-          <span
-            key={left}
-            className="cs-rise absolute bottom-0 h-1.5 w-1.5 rounded-full bg-rose-400/70"
-            style={{ left: `${left}%`, animationDelay: `${i * 1.1}s`, animationDuration: `${6 + (i % 3)}s` }}
-          />
-        ))}
+            <p
+              className="fx mt-8 max-w-lg text-base leading-8 text-white/70"
+              data-fx="sudden-pop-up"
+              style={{ "--d": "700ms" }}
+            >
+              Our story is shaped by thoughtful solutions, lasting
+              partnerships, and an unwavering commitment to quality.
+            </p>
+
+            <div
+              className="fx mt-10 flex items-center gap-4 text-xs font-semibold uppercase tracking-wider text-white/50"
+              data-fx="wipe"
+              style={{ "--d": "900ms" }}
+            >
+              <span className="h-0.5 w-14 bg-[#F06A70]" />
+              Precision in every detail
+            </div>
+          </div>
+
+          <div className="hero-visual relative mx-auto aspect-square w-full max-w-[460px]">
+            <div className="parallax absolute inset-0">
+              <span className="radar" />
+              <span className="radar" style={{ animationDelay: "1.2s" }} />
+              <span className="radar" style={{ animationDelay: "2.4s" }} />
+              <div
+                className="fx absolute inset-[12%]"
+                data-fx="sudden-zoom-in"
+                style={{ "--d": "300ms" }}
+              >
+                <div className="disc flex flex-col items-center justify-center rounded-full bg-[#1A1A1A] text-white shadow-2xl border border-white/10">
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#F06A70]">Established</span>
+                  <span
+                    ref={yearRef}
+                    className="serif my-1 text-[clamp(3.5rem,7vw,5rem)] leading-none tabular-nums"
+                  >
+                    1988
+                  </span>
+                  <span className="text-xs font-medium text-white/60">Canada</span>
+                </div>
+              </div>
+            </div>
+
+            {[
+              ["Quality", "top-[2%] left-[-2%]", "600ms", "0s"],
+              ["Partnership", "top-[48%] right-[-6%]", "800ms", "0.8s"],
+              ["Progress", "bottom-[2%] left-[6%]", "1000ms", "1.6s"],
+            ].map(([label, position, delay, floatDelay], i) => (
+              <div
+                key={label}
+                className={`fx absolute ${position}`}
+                data-fx={fxCycle[i + 1]}
+                style={{ "--d": delay }}
+              >
+                <span className="chip" style={{ "--fd": floatDelay }}>
+                  <i />
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* ============ Top grid ============ */}
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
-          {/* ---------- Left column ---------- */}
-          <div className="flex flex-col justify-center lg:col-span-7">
-            <Reveal>
-              <div className="mb-5 inline-flex items-center gap-2.5 self-start rounded-full border border-rose-200/80 bg-rose-50/80 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-rose-700 shadow-sm backdrop-blur-md transition-transform duration-300 hover:scale-105">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-600" />
-                </span>
-                <span>Our Legacy &amp; Heritage</span>
-              </div>
-            </Reveal>
-
-            <Reveal delay={100}>
-              <h2 className="text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-                Over 3 Decades of <br className="hidden sm:inline" />
-                <span className="cs-shimmer-text bg-gradient-to-r from-rose-600 via-red-500 to-rose-600 bg-clip-text text-transparent">
-                  Global Branding Leadership
+      {/* CHAPTERS SECTION */}
+      <div className="border-t border-black/10 bg-[#EFECE6] py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-6">
+          <div
+            className="fx flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between"
+            data-fx="sudden-pop-up"
+          >
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#C21F30]">
+                Our Evolution
+              </p>
+              <h2 className="serif text-[clamp(2.2rem,4vw,3.5rem)] leading-[1.02] tracking-tight">
+                Every chapter
+                <br />
+                <span className="text-black/40 italic">
+                  moves us forward.
                 </span>
               </h2>
-            </Reveal>
-
-            <Reveal delay={200}>
-              <p className="mt-5 text-sm font-normal leading-relaxed text-slate-600 sm:text-base lg:text-lg">
-                Established in Canada in 1988, 3M Label Limited has grown into a premier multinational
-                manufacturer and global supplier of high-grade garment accessories, thermal branding
-                labels, offset swing tickets, and specialized retail packaging.
-              </p>
-            </Reveal>
-
-            <Reveal delay={300}>
-              <p className="mt-3.5 text-xs leading-relaxed text-slate-600 sm:text-sm lg:text-base">
-                As a core sister concern of{" "}
-                <strong className="font-semibold text-slate-900">Label Bank Asia</strong>, we provide
-                seamless source-tagging infrastructure, EDI integration, and precision quality control
-                tailored to the world’s leading fashion retailers and private label brands.
-              </p>
-            </Reveal>
-
-            {/* Moving ticker */}
-            <Reveal delay={350}>
-              <div className="cs-marquee-wrap relative mt-7 overflow-hidden rounded-2xl border border-rose-100 bg-white/70 py-3 backdrop-blur [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-                <div className="cs-marquee flex w-max items-center gap-3 pr-3">
-                  {[...ticker, ...ticker].map((t, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-rose-100 bg-rose-50/70 px-3.5 py-1.5 text-xs font-semibold text-rose-700 transition-colors duration-300 hover:bg-rose-600 hover:text-white sm:text-[13px]"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Mission card with rotating conic border + spotlight */}
-            <Reveal delay={450}>
-              <div className="group relative mt-8 overflow-hidden rounded-3xl p-[1.5px] shadow-lg shadow-rose-950/5 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-950/15">
-                {/* spinning gradient border */}
-                <div
-                  aria-hidden
-                  className="cs-spin absolute left-1/2 top-1/2 aspect-square w-[250%] -translate-x-1/2 -translate-y-1/2 [background:conic-gradient(from_0deg,transparent_0deg,#f43f5e_70deg,transparent_140deg,transparent_220deg,#ef4444_290deg,transparent_360deg)]"
-                  style={{ transformOrigin: "center" }}
-                />
-                <div
-                  onMouseMove={trackSpotlight}
-                  className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-rose-50 via-white to-white p-6 sm:p-7"
-                >
-                  {/* spotlight */}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                    style={spotlightBg}
-                  />
-                  {/* shimmer sweep */}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-white/0 via-white/70 to-white/0 transition-transform duration-1000 group-hover:translate-x-full"
-                  />
-
-                  <div className="relative z-10 flex items-start gap-4 sm:gap-5">
-                    <div className="relative flex-shrink-0">
-                      <span aria-hidden className="cs-ring absolute inset-0 rounded-2xl bg-rose-500/40" />
-                      <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-lg shadow-rose-600/30 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 sm:h-14 sm:w-14">
-                        <Award className="h-6 w-6 sm:h-7 sm:w-7" />
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-rose-600">
-                        <Sparkles className="h-3.5 w-3.5 transition-transform duration-700 group-hover:rotate-180" />
-                        Core Corporate Philosophy
-                      </span>
-                      <blockquote className="mt-1 text-base font-bold leading-snug text-slate-900 sm:text-lg">
-                        &ldquo;Our mission is not to be the biggest in this business, simply the best!&rdquo;
-                      </blockquote>
-                      <p className="mt-1.5 text-xs text-slate-600 sm:text-sm">
-                        We invite brand managers to compare our service quality, speed, and competitive
-                        pricing structures.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
+            </div>
+            <p className="max-w-xs text-sm leading-6 text-black/60">
+              Different milestones. One continuing commitment to precision craftsmanship.
+            </p>
           </div>
 
-          {/* ---------- Right column: dark tilt card ---------- */}
-          <div className="lg:col-span-5">
-            <Reveal direction="right" delay={200}>
-              <div className="cs-float mx-auto max-w-xl lg:max-w-none" style={{ perspective: "1200px" }}>
-                <div
-                  ref={cardRef}
-                  onMouseMove={handleTilt}
-                  onMouseLeave={() => setTilt({ x: 0, y: 0 })}
-                  style={{
-                    transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-                    transformStyle: "preserve-3d",
-                  }}
-                  className="group relative overflow-hidden rounded-3xl border border-rose-900/60 bg-gradient-to-br from-slate-950 via-rose-950 to-slate-900 p-6 text-white shadow-2xl shadow-rose-950/30 transition-transform duration-200 ease-out sm:p-9"
-                >
-                  {/* internal orbs */}
-                  <div aria-hidden className="cs-drift-a pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-rose-600/30 blur-3xl" />
-                  <div aria-hidden className="cs-drift-b pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-red-600/20 blur-3xl" />
-                  {/* cursor spotlight */}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                    style={{
-                      background:
-                        "radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(251,113,133,0.18), transparent 70%)",
-                    }}
-                  />
-
-                  {/* Header */}
-                  <div className="relative z-10 mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-rose-900/70 pb-5 sm:mb-8">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-600/20 text-rose-400">
-                        <TrendingUp className="h-4 w-4" />
-                      </div>
-                      <h3 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                        Key Highlights
-                      </h3>
-                    </div>
-                    <span className="rounded-full border border-rose-500/30 bg-rose-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300">
-                      Global Scale
-                    </span>
-                  </div>
-
-                  {/* Highlights */}
-                  <div className="relative z-10 space-y-4 sm:space-y-5">
-                    {[
-                      {
-                        value: year,
-                        label: "Established in Canada",
-                        icon: ShieldCheck,
-                      },
-                      {
-                        value: `${hours} Hours`,
-                        label: "Standard Dispatch Turnaround",
-                        icon: Zap,
-                      },
-                      {
-                        value: "Label Bank Asia",
-                        label: "Multinational Sister Concern",
-                        icon: Globe2,
-                      },
-                    ].map((row, i) => {
-                      const RowIcon = row.icon;
-                      return (
-                        <div
-                          key={row.label}
-                          style={{
-                            transitionDelay: `${cardInView ? 300 + i * 150 : 0}ms`,
-                          }}
-                          className={`group/row relative flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-3.5 transition-all duration-700 hover:translate-x-1 hover:border-rose-400/40 hover:bg-white/10 ${
-                            cardInView ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0"
-                          }`}
-                        >
-                          {/* left accent bar grows on hover */}
-                          <span
-                            aria-hidden
-                            className="absolute left-0 top-0 h-full w-0.5 origin-top scale-y-0 bg-rose-400 transition-transform duration-300 group-hover/row:scale-y-100"
-                          />
-                          <div className="min-w-0">
-                            <p className="break-words text-2xl font-black leading-tight tabular-nums tracking-tight text-white sm:text-3xl lg:text-2xl xl:text-3xl">
-                              {row.value}
-                            </p>
-                            <p className="mt-0.5 text-xs font-medium text-rose-200">{row.label}</p>
-                          </div>
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400 transition-all duration-300 group-hover/row:bg-rose-500 group-hover/row:text-white">
-                            <RowIcon className="cs-wiggle h-5 w-5" />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* CTA */}
-                  <div className="relative z-10 mt-7 border-t border-rose-900/80 pt-6 sm:mt-8">
-                    <a
-                      href="#contact"
-                      className="group/cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-rose-600 px-6 py-3.5 text-xs font-bold text-white shadow-lg shadow-rose-600/30 transition-all duration-300 hover:scale-[1.02] hover:bg-rose-500 hover:shadow-rose-600/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 active:scale-[0.98] sm:text-sm"
-                    >
-                      <span
-                        aria-hidden
-                        className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover/cta:translate-x-full"
-                      />
-                      <span className="relative">Connect With Our Regional Teams</span>
-                      <ArrowRight className="relative h-4 w-4 transition-transform duration-300 group-hover/cta:translate-x-1.5" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-
-        {/* ============ Milestones ============ */}
-        <div className="relative mt-16 sm:mt-20 lg:mt-24">
-          {/* Connecting line with travelling dot (desktop only) */}
           <div
-            aria-hidden
-            className="pointer-events-none absolute left-0 right-0 top-[56px] z-0 hidden h-px border-t-2 border-dashed border-rose-200 md:block"
+            className="mt-12"
+            onPointerEnter={() => setHold(true)}
+            onPointerLeave={() => setHold(false)}
+            onFocus={() => setHold(true)}
+            onBlur={() => setHold(false)}
           >
-            <span className="cs-travel absolute -top-[7px] h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_14px_4px_rgba(244,63,94,0.55)]" />
-          </div>
+            <div
+              role="tablist"
+              aria-label="Company chapters"
+              className="grid grid-cols-3 gap-4 sm:gap-8"
+              style={{ "--ps": hold ? "paused" : "running" }}
+            >
+              {chapters.map((item, index) => (
+                <button
+                  key={item.number}
+                  type="button"
+                  role="tab"
+                  id={`story-tab-${index}`}
+                  aria-selected={active === index}
+                  aria-controls="story-panel"
+                  onClick={() => goTo(index)}
+                  className={`stab cursor-pointer text-left ${active === index ? "stab-on" : ""}`}
+                >
+                  <span className="relative block h-1 overflow-hidden rounded-full bg-black/10">
+                    {active === index && (
+                      <span
+                        key={active}
+                        className="fill"
+                        onAnimationEnd={(event) => {
+                          if (event.animationName.includes("progressFill"))
+                            goTo((active + 1) % chapters.length);
+                        }}
+                      />
+                    )}
+                  </span>
+                  <span className="serif mt-4 block text-2xl font-normal sm:text-3xl">
+                    {sentence(item.year)}
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold uppercase tracking-wider text-black/50">
+                    {sentence(item.label)}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-          <div className="relative z-10 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
-            {milestones.map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <Reveal key={item.title} delay={idx * 150} className="h-full">
-                  <div
-                    onMouseMove={trackSpotlight}
-                    className="group relative flex h-full flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-rose-300 hover:shadow-2xl hover:shadow-rose-950/10 sm:p-8"
-                  >
-                    {/* accent back-glow */}
-                    <div
-                      aria-hidden
-                      className={`pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br ${item.accent} opacity-0 transition-opacity duration-500 group-hover:opacity-100`}
-                    />
-                    {/* cursor spotlight */}
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                      style={spotlightBg}
-                    />
-                    {/* top progress bar fills on hover */}
-                    <span
-                      aria-hidden
-                      className="absolute left-0 top-0 h-1 w-full origin-left scale-x-0 bg-gradient-to-r from-rose-500 to-red-500 transition-transform duration-700 ease-out group-hover:scale-x-100"
-                    />
-
-                    <div className="relative z-10">
-                      <div className="mb-5 flex items-center justify-between gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 shadow-inner transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-rose-600 group-hover:text-white">
-                          <Icon className="cs-wiggle h-6 w-6" />
-                        </div>
-                        <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600 transition-colors group-hover:border-rose-200 group-hover:bg-rose-50 group-hover:text-rose-700">
-                          {item.year}
-                        </span>
-                      </div>
-
-                      <h3 className="text-lg font-bold text-slate-900 transition-colors duration-300 group-hover:text-rose-600">
-                        {item.title}
-                      </h3>
-
-                      <p className="mt-2.5 text-xs leading-relaxed text-slate-600 sm:text-sm">
-                        {item.description}
-                      </p>
-                    </div>
-
-                    <div className="relative z-10 mt-6 flex items-center justify-between border-t border-slate-100 pt-4 text-xs font-semibold text-rose-600">
-                      <span className="transition-transform duration-300 group-hover:translate-x-1">
-                        Explore Milestone
-                      </span>
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-50 transition-all duration-300 group-hover:bg-rose-600 group-hover:text-white">
-                        <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-                      </div>
-                    </div>
-                  </div>
-                </Reveal>
-              );
-            })}
+            <div
+              id="story-panel"
+              role="tabpanel"
+              aria-labelledby={`story-tab-${active}`}
+              className="stage relative mt-10 overflow-hidden rounded-3xl bg-white shadow-xl border border-black/5"
+            >
+              <span className="stage-corner" aria-hidden="true" />
+              {previous !== null &&
+                renderChapter(chapters[previous], "ch-leave", true)}
+              <div key={active} className="ch-enter">
+                {renderChapter(chapters[active], "", false)}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* MISSION SECTION */}
+      <div className="mission relative isolate overflow-hidden bg-[#0A0A0A] px-6 py-28 text-white md:py-36">
+        <div className="mrings" aria-hidden="true">
+          <span className="mring" />
+          <span className="mring" style={{ animationDelay: "1.2s" }} />
+          <span className="mring red" style={{ animationDelay: "2.4s" }} />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-7xl">
+          <p
+            className="fx mb-6 text-xs font-bold uppercase tracking-widest text-[#F06A70]"
+            data-fx="sudden-appear"
+          >
+            What We Believe
+          </p>
+
+          <h2 className="serif text-[clamp(2.5rem,5vw,4.5rem)] leading-[1.02] tracking-tight">
+            <span className="block">
+              {missionWords.map((word, i) => (
+                <span key={word} className="inline-block overflow-hidden">
+                  <span
+                    className="fx word inline-block"
+                    data-fx="sudden-pop-up"
+                    style={{ "--d": `${i * 100}ms` }}
+                  >
+                    {word}
+                  </span>{" "}
+                </span>
+              ))}
+            </span>
+            <span
+              className="fx word mission-emphasis block text-[#F06A70] italic"
+              data-fx="slam"
+              style={{ "--d": "800ms" }}
+            >
+              Simply the best.
+            </span>
+          </h2>
+
+          <div className="mt-12 flex flex-col gap-8 border-t border-white/10 pt-8 sm:flex-row sm:items-end sm:justify-between">
+            <p
+              className="fx max-w-xl text-base leading-8 text-white/70"
+              data-fx="sudden-zoom-out"
+              style={{ "--d": "1000ms" }}
+            >
+              We focus on getting the details right, maintaining high
+              standards, and building relationships that stand the test of
+              time.
+            </p>
+            <div
+              className="fx shrink-0"
+              data-fx="sudden-zoom-in"
+              style={{ "--d": "1200ms" }}
+            >
+              <div className="mission-symbol grid size-16 place-items-center rounded-full border border-[#F06A70]/40 bg-[#F06A70]/10 text-2xl text-[#F06A70]">
+                ✳
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SERVICES GRID SECTION */}
+      <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
+        <div
+          className="fx flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+          data-fx="sudden-pop-up"
+        >
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#C21F30]">
+              Our Capabilities
+            </p>
+            <h2 className="serif text-[clamp(2.2rem,3.8vw,3.2rem)] leading-[1.05] tracking-tight">
+              The right details.
+              <br />
+              <span className="text-black/40 italic">
+                The right solutions.
+              </span>
+            </h2>
+          </div>
+          <p className="max-w-xs text-sm leading-6 text-black/60">
+            A range of services designed to support products from concept to delivery.
+          </p>
+        </div>
+
+        <ul className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+          {services.map((service, index) => (
+            <li
+              key={service}
+              className="fx"
+              data-fx={fxCycle[index % 4]}
+              style={{
+                "--d": `${(index % 4) * 80 + Math.floor(index / 4) * 180}ms`,
+              }}
+            >
+              <div className="tile group">
+                <div className="relative z-10 flex items-start justify-between">
+                  <span className="tile-num serif text-lg font-bold">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="tile-arrow text-lg font-bold">↗</span>
+                </div>
+                <span className="tile-name serif relative z-10 text-xl leading-[1.1] sm:text-2xl font-normal">
+                  {service}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* CLOSING SECTION */}
+      <div className="closing relative isolate overflow-hidden border-t border-black/10 px-6 py-28 sm:px-8 md:py-36 bg-white">
+        <div className="mx-auto max-w-7xl">
+          <p
+            className="fx mb-6 text-xs font-bold uppercase tracking-widest text-[#C21F30]"
+            data-fx="sudden-appear"
+          >
+            Looking Ahead
+          </p>
+          <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+            <h2 className="serif max-w-3xl text-[clamp(2.5rem,4.5vw,4rem)] leading-[1.02] tracking-tight">
+              {closingWords.map((word, i) => (
+                <span key={word} className="inline-block overflow-hidden">
+                  <span
+                    className={`fx word inline-block ${i === closingWords.length - 1 ? "text-[#C21F30] italic" : ""}`}
+                    data-fx="slam"
+                    style={{ "--d": `${i * 100}ms` }}
+                  >
+                    {word}
+                  </span>{" "}
+                </span>
+              ))}
+            </h2>
+            <p
+              className="fx max-w-sm text-base leading-7 text-black/60"
+              data-fx="sudden-pop-up"
+              style={{ "--d": "700ms" }}
+            >
+              Moving forward with the same focus on quality, trust, and lasting
+              partnerships.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .company-story {
+          font-family: var(--font-story-sans), system-ui, sans-serif;
+        }
+        .serif {
+          font-family: var(--font-story-serif), Georgia, serif;
+        }
+
+        .scroll-bar {
+          position: sticky;
+          top: 0;
+          z-index: 60;
+          height: 4px;
+          margin-bottom: -4px;
+          background: #c21f30;
+          transform: scaleX(var(--p, 0));
+          transform-origin: left;
+        }
+
+        /* Initial Hidden State */
+        .story-ready .fx {
+          opacity: 0;
+          will-change: transform, opacity, filter;
+        }
+
+        /* Sudden Entrance Animations */
+        .story-ready .fx.in {
+          opacity: 1;
+          animation-duration: 650ms;
+          animation-delay: var(--d, 0ms);
+          animation-fill-mode: both;
+          animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Sudden Disappearance Animations */
+        .story-ready .fx.out-top {
+          animation: exitTop 450ms cubic-bezier(0.7, 0, 0.84, 0) forwards !important;
+        }
+        .story-ready .fx.out-bottom {
+          animation: exitBottom 450ms cubic-bezier(0.7, 0, 0.84, 0) forwards !important;
+        }
+
+        .fx.in[data-fx="sudden-zoom-in"] { animation-name: suddenZoomIn; }
+        .fx.in[data-fx="sudden-zoom-out"] { animation-name: suddenZoomOut; }
+        .fx.in[data-fx="sudden-pop-up"] { animation-name: suddenPopUp; }
+        .fx.in[data-fx="sudden-appear"] { animation-name: suddenAppear; }
+        .fx.in[data-fx="slam"] { animation-name: suddenSlam; }
+        .fx.in[data-fx="wipe"] { animation-name: wipeReveal; }
+
+        @keyframes suddenZoomIn {
+          0% { opacity: 0; transform: scale(0.05); }
+          60% { opacity: 1; transform: scale(1.18); }
+          85% { transform: scale(0.96); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes suddenZoomOut {
+          0% { opacity: 0; transform: scale(3.2); filter: blur(18px); }
+          65% { opacity: 1; filter: blur(0); transform: scale(0.94); }
+          100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+
+        @keyframes suddenPopUp {
+          0% { opacity: 0; transform: translateY(120px) scale(0.8); }
+          65% { opacity: 1; transform: translateY(-12px) scale(1.03); }
+          85% { transform: translateY(3px) scale(0.99); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes suddenAppear {
+          0% { opacity: 0; transform: scale(1.3); }
+          15% { opacity: 1; transform: scale(0.95); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes suddenSlam {
+          0% { opacity: 0; transform: scale(4) translateY(-40px); filter: blur(12px); }
+          50% { opacity: 1; transform: scale(0.9); filter: blur(0); }
+          75% { transform: scale(1.06); }
+          100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+
+        @keyframes wipeReveal {
+          0% { opacity: 0; clip-path: inset(0 100% 0 0); }
+          100% { opacity: 1; clip-path: inset(0 0 0 0); }
+        }
+
+        @keyframes exitTop {
+          0% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+          100% { opacity: 0; transform: scale(1.8) translateY(-60px); filter: blur(14px); }
+        }
+
+        @keyframes exitBottom {
+          0% { opacity: 1; transform: scale(1) translateY(0); }
+          100% { opacity: 0; transform: scale(0.2) translateY(60px); filter: blur(8px); }
+        }
+
+        .ping {
+          position: relative;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #f06a70;
+        }
+        .ping::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: #f06a70;
+          animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        .parallax {
+          transform: translate(
+            calc(var(--mx, 0) * 18px),
+            calc(var(--my, 0) * 18px)
+          );
+          transition: transform 250ms ease-out;
+        }
+        .radar {
+          position: absolute;
+          inset: 0%;
+          border: 1.5px solid rgba(240, 106, 112, 0.35);
+          border-radius: 50%;
+          opacity: 0;
+          animation: radar 3.5s cubic-bezier(0.15, 0.85, 0.35, 1.2) infinite;
+        }
+        .disc {
+          width: 100%;
+          height: 100%;
+          animation: pulseScale 4s ease-in-out infinite;
+        }
+        .chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 18px;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 999px;
+          background: rgba(26, 26, 26, 0.85);
+          backdrop-filter: blur(8px);
+          font-size: 13px;
+          font-weight: 600;
+          color: #fff;
+          box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.5);
+          animation: floatY 3.5s ease-in-out var(--fd, 0s) infinite;
+        }
+        .chip i {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #f06a70;
+        }
+
+        .stab {
+          padding-bottom: 6px;
+          color: #171717;
+          transition: transform 200ms ease;
+        }
+        .stab:hover { transform: translateY(-2px); }
+        .stab:not(.stab-on) { opacity: 0.45; }
+        .stab:not(.stab-on):hover { opacity: 0.85; }
+        .fill {
+          position: absolute;
+          inset: 0;
+          background: #c21f30;
+          transform-origin: left;
+          animation: progressFill 5.5s linear forwards;
+          animation-play-state: var(--ps, running);
+        }
+        .stage-corner {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 48px;
+          height: 48px;
+          border-top: 3px solid #c21f30;
+          border-left: 3px solid #c21f30;
+          z-index: 5;
+        }
+        .chapter-view { position: relative; height: 100%; }
+        .ch-enter { animation: chEnter 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .ch-leave {
+          position: absolute;
+          inset: 0;
+          z-index: 4;
+          pointer-events: none;
+          animation: chLeave 400ms cubic-bezier(0.7, 0, 0.84, 0) both;
+        }
+        .giant {
+          position: absolute;
+          right: -0.05em;
+          bottom: -0.2em;
+          font-size: clamp(10rem, 24vw, 18rem);
+          line-height: 1;
+          color: transparent;
+          -webkit-text-stroke: 2px rgba(194, 31, 48, 0.15);
+          pointer-events: none;
+        }
+
+        .tile {
+          position: relative;
+          display: flex;
+          min-height: 160px;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 20px;
+          overflow: hidden;
+          padding: 20px;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          border-radius: 20px;
+          background: #fff;
+          transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms ease, color 200ms ease, border-color 200ms ease;
+        }
+        .tile::before {
+          content: "";
+          position: absolute;
+          right: -20%;
+          bottom: -50%;
+          width: 160%;
+          aspect-ratio: 1;
+          border-radius: 50%;
+          background: #c21f30;
+          transform: scale(0);
+          transition: transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tile:hover {
+          z-index: 2;
+          transform: translateY(-6px) scale(1.04);
+          border-color: #c21f30;
+          color: #fff;
+          box-shadow: 0 24px 48px -18px rgba(194, 31, 48, 0.5);
+        }
+        .tile:hover::before { transform: scale(1); }
+        .tile-num { color: #c21f30; transition: color 200ms ease; }
+        .tile:hover .tile-num { color: #fff; }
+        .tile-arrow { color: rgba(0, 0, 0, 0.3); transition: transform 250ms ease, color 200ms ease; }
+        .tile:hover .tile-arrow { color: #fff; transform: translate(4px, -4px) scale(1.2); }
+
+        @keyframes radar {
+          0% { opacity: 0.9; transform: scale(0.2); }
+          100% { opacity: 0; transform: scale(1.4); }
+        }
+        @keyframes ping {
+          0% { transform: scale(1); opacity: 0.8; }
+          80%, 100% { transform: scale(3.5); opacity: 0; }
+        }
+        @keyframes floatY {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes pulseScale {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        @keyframes progressFill {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }
+        @keyframes chEnter {
+          0% { opacity: 0; transform: scale(0.3) translateY(60px); filter: blur(12px); }
+          70% { opacity: 1; transform: scale(1.03); filter: blur(0); }
+          100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+        @keyframes chLeave {
+          0% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.8); filter: blur(16px); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .company-story * { animation: none !important; transition: none !important; }
+          .story-ready .fx { opacity: 1 !important; transform: none !important; filter: none !important; }
+        }
+      `}</style>
     </section>
   );
 }

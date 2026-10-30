@@ -9,16 +9,41 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Instrument_Serif, DM_Sans } from "next/font/google";
 import {
-  ArrowDownRight,
   ArrowUpRight,
   Asterisk,
   Check,
-  MoveUpRight,
+  ChevronLeft,
+  ChevronRight,
   Pause,
   Play,
-  ScanLine,
 } from "lucide-react";
+
+/*
+  Structure (top to bottom, all on one 12-column grid):
+    1. Slim ticker
+    2. Header: headline (7 cols) + intro (4 cols)
+    3. Three-point strip with hairline dividers
+    4. One module: [ rail of five marks ] / [ detail + controls ]
+    5. Contact bar
+
+  Type: Instrument Serif (one weight, so no font-bold on serif) + DM Sans.
+  Palette: white #ffffff / black #0a0a0a / red #c8102e / warm grey #faf9f7 / grey #f5f4f2
+*/
+
+const serif = Instrument_Serif({
+  weight: "400",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-cert-serif",
+});
+const sans = DM_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-cert-sans",
+});
 
 const certifications = [
   { name: "ISO 9001:2015", src: "/image/certifications/iso.png", short: "ISO" },
@@ -33,20 +58,17 @@ const certifications = [
     src: "/image/certifications/grs.png",
     short: "GRS",
   },
-  { name: "Sedex", src: "/image/certifications/sedex.png", short: "SEDEX" },
+  { name: "Sedex", src: "/image/certifications/sedex.png", short: "Sedex" },
 ];
 const points = ["Quality", "Safety", "Sustainability"];
 const subscribe = () => () => {};
 const clientSnapshot = () => true;
 const serverSnapshot = () => false;
-const wideSnapshot = () => window.matchMedia("(min-width: 1024px)").matches;
-const subscribeLayout = (callback) => {
-  const media = window.matchMedia("(min-width: 1024px)");
-  media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
-};
 const container =
-  "mx-auto w-[calc(100%-2.5rem)] max-w-[1280px] sm:w-[calc(100%-4rem)] lg:w-[calc(100%-6rem)]";
+  "mx-auto w-[calc(100%-2.5rem)] max-w-[1180px] sm:w-[calc(100%-4rem)] lg:w-[calc(100%-6rem)]";
+const display = "font-[family-name:var(--font-cert-serif)] font-normal";
+const count = certifications.length;
+const last = count - 1;
 
 export default function Certifications() {
   const [active, setActive] = useState(0);
@@ -54,11 +76,6 @@ export default function Certifications() {
   const enhanced = useSyncExternalStore(
     subscribe,
     clientSnapshot,
-    serverSnapshot,
-  );
-  const vertical = useSyncExternalStore(
-    subscribeLayout,
-    wideSnapshot,
     serverSnapshot,
   );
   const root = useRef(null);
@@ -122,7 +139,7 @@ export default function Certifications() {
             { transform: "translateX(0)" },
             { transform: "translateX(-50%)" },
           ];
-          duration = 52000;
+          duration = 60000;
         }
         if (type === "sweep") {
           frames = [
@@ -143,7 +160,7 @@ export default function Certifications() {
               offset: 1,
             },
           ];
-          duration = 4200;
+          duration = 5200;
         }
         if (type === "glow") {
           frames = [
@@ -186,8 +203,8 @@ export default function Certifications() {
                     opacity: 0,
                     transform:
                       node.dataset.certReveal === "pop"
-                        ? "translateY(35px) scale(.88)"
-                        : "translateY(35px)",
+                        ? "translateY(30px) scale(.97)"
+                        : "translateY(30px)",
                   },
                   { opacity: 1, transform: "translateY(0) scale(1)" },
                 ],
@@ -220,8 +237,8 @@ export default function Certifications() {
       frame = requestAnimationFrame(() => {
         frame = 0;
         const bounds = stage.current.getBoundingClientRect();
-        const x = ((pointer.x - bounds.left) / bounds.width - 0.5) * 9;
-        const y = -((pointer.y - bounds.top) / bounds.height - 0.5) * 7;
+        const x = ((pointer.x - bounds.left) / bounds.width - 0.5) * 2.5;
+        const y = -((pointer.y - bounds.top) / bounds.height - 0.5) * 2;
         const from = getComputedStyle(tilt.current).transform;
         pointerAnimation?.cancel();
         pointerAnimation = tilt.current.animate(
@@ -266,37 +283,64 @@ export default function Certifications() {
     const panel = root.current.querySelector(
       '[data-cert-panel][data-active="true"]',
     );
-    if (!panel?.animate || media.matches) return;
-    const animation = panel.animate(
-      [
-        { opacity: 0, transform: "translateY(25px) scale(.9) rotate(2deg)" },
-        { opacity: 1, transform: "translateY(0) scale(1) rotate(0deg)" },
-      ],
-      { duration: 700, easing: "cubic-bezier(.16,1,.3,1)" },
-    );
+    if (!panel || media.matches) return;
+    const animations = [];
+    const plate = panel.querySelector("[data-cert-disc]");
+    if (panel.animate)
+      animations.push(
+        panel.animate(
+          [
+            { opacity: 0, transform: "translateY(16px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ],
+          { duration: 600, easing: "cubic-bezier(.16,1,.3,1)" },
+        ),
+      );
+    if (plate?.animate)
+      animations.push(
+        plate.animate(
+          [
+            { opacity: 0, transform: "scale(.82) rotate(-8deg)" },
+            { opacity: 1, transform: "scale(1) rotate(0deg)" },
+          ],
+          {
+            duration: 900,
+            delay: 120,
+            easing: "cubic-bezier(.16,1,.3,1)",
+            fill: "backwards",
+          },
+        ),
+      );
     const reduce = () => {
-      if (media.matches) animation.cancel();
+      if (media.matches) animations.forEach((animation) => animation.cancel());
     };
     media.addEventListener("change", reduce);
     return () => {
-      animation.cancel();
+      animations.forEach((animation) => animation.cancel());
       media.removeEventListener("change", reduce);
     };
   }, [active, enhanced, paused]);
 
+  function go(next, focus = false) {
+    setActive(next);
+    if (focus) tabs.current[next]?.focus();
+  }
   function handleKey(event, index) {
     let next;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight")
-      next = (index + 1) % certifications.length;
-    else if (event.key === "ArrowUp" || event.key === "ArrowLeft")
-      next = (index + certifications.length - 1) % certifications.length;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown")
+      next = (index + 1) % count;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+      next = (index + count - 1) % count;
     else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = certifications.length - 1;
+    else if (event.key === "End") next = last;
     else return;
     event.preventDefault();
-    setActive(next);
-    tabs.current[next]?.focus();
+    go(next, true);
   }
+
+  const iconButton =
+    "grid size-10 place-items-center rounded-full border border-black/15 text-black transition-colors duration-300 hover:border-[#c8102e] hover:bg-[#c8102e] hover:text-white";
+
   return (
     <section
       ref={root}
@@ -304,198 +348,214 @@ export default function Certifications() {
       data-certifications
       data-paused={paused}
       aria-labelledby="certifications-title"
-      className="relative isolate w-full min-w-0 overflow-hidden bg-[#171d18] py-16 font-sans text-[#f3f1e7] [--cert-focus:#f0ad98] selection:bg-[#f0ad98] selection:text-[#252c22] data-[paused=true]:[&_*]:transition-none motion-reduce:[&_*]:transition-none [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-4 [&_a:focus-visible]:outline-[var(--cert-focus)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-4 [&_button:focus-visible]:outline-[var(--cert-focus)] [&_[tabindex='0']:focus-visible]:outline-2 [&_[tabindex='0']:focus-visible]:outline-offset-4 [&_[tabindex='0']:focus-visible]:outline-[var(--cert-focus)] sm:py-20 lg:py-28"
+      className={`${serif.variable} ${sans.variable} relative isolate w-full min-w-0 overflow-hidden bg-white pb-20 font-[family-name:var(--font-cert-sans)] text-[#0a0a0a] [--cert-focus:#c8102e] selection:bg-[#c8102e] selection:text-white data-[paused=true]:[&_*]:transition-none motion-reduce:[&_*]:transition-none [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-4 [&_a:focus-visible]:outline-[var(--cert-focus)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-4 [&_button:focus-visible]:outline-[var(--cert-focus)] [&_[tabindex='0']:focus-visible]:outline-2 [&_[tabindex='0']:focus-visible]:outline-offset-4 [&_[tabindex='0']:focus-visible]:outline-[var(--cert-focus)] sm:pb-28`}
     >
+      {/* 1. Ticker */}
+      <div
+        aria-hidden="true"
+        className="overflow-hidden bg-[#0a0a0a] py-2.5 text-xs text-white/80"
+      >
+        <div data-cert-motion="marquee" className="flex w-max">
+          {[0, 1].map((copy) => (
+            <div
+              key={copy}
+              className="flex min-w-[100vw] shrink-0 items-center justify-around"
+            >
+              {[...points, ...points, ...points, ...points].map(
+                (point, index) => (
+                  <span
+                    key={`${point}-${index}`}
+                    className="mr-10 flex items-center gap-10 whitespace-nowrap"
+                  >
+                    {point}
+                    <Asterisk
+                      size={12}
+                      strokeWidth={2.4}
+                      data-cert-motion={index < 4 ? "orbit" : undefined}
+                      className="text-[#e0222f]"
+                    />
+                  </span>
+                ),
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div
         data-cert-motion="glow"
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -left-24 -z-10 size-[430px] rounded-full bg-[#b5533c]/15 blur-3xl"
+        className="pointer-events-none absolute top-24 -right-40 -z-10 size-[460px] rounded-full bg-[#c8102e]/[.06] blur-3xl"
       />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-10 -right-24 -z-10 size-[620px] rounded-full border border-[#56644c]/25"
-      >
-        <div className="absolute inset-16 rounded-full border border-[#56644c]/25" />
-        <div className="absolute inset-32 rounded-full border border-[#56644c]/25" />
-      </div>
-      <div className={container}>
-        <div className="flex flex-wrap items-center justify-between gap-5 border-b border-[#485442] pb-6">
-          <p className="flex items-center gap-3 font-mono text-[9px] tracking-[.12em] text-[#efad99]">
-            <span className="size-2 rounded-full bg-[#ed9a83]" />
-            CERTIFICATIONS &amp; INITIATIVES
-          </p>
-          <button
-            type="button"
-            onClick={() => setPaused((value) => !value)}
-            aria-pressed={paused}
-            className={`${enhanced ? "inline-flex" : "hidden"} min-h-11 items-center gap-2 rounded-full border border-[#69775f] px-4 py-2.5 text-[10px] font-medium text-[#e4ebdb] transition-colors hover:bg-[#34412e] motion-reduce:hidden`}
-          >
-            {paused ? (
-              <Play size={12} aria-hidden="true" />
-            ) : (
-              <Pause size={12} aria-hidden="true" />
-            )}
-            {paused ? "Resume motion" : "Pause motion"}
-          </button>
-        </div>
-        <div className="grid items-end gap-8 pt-10 pb-10 sm:pt-12 sm:pb-12 lg:grid-cols-[1.25fr_.75fr] lg:gap-16">
-          <div data-cert-reveal="rise">
-            <h2
-              id="certifications-title"
-              className="text-[clamp(2.3rem,4.7vw,4.7rem)] leading-[1.04] font-medium tracking-[-.055em]"
-            >
-              Proof in the details.
-              <br />
-              <span className="font-serif font-normal italic text-[#efad99]">
-                Confidence in the making.
-              </span>
-            </h2>
-            <div className="mt-7 flex flex-wrap gap-2.5">
-              {points.map((point) => (
-                <span
-                  key={point}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#65735a] px-3.5 py-2 text-[10px] text-[#dce6d2]"
-                >
-                  <Check
-                    size={12}
-                    aria-hidden="true"
-                    className="text-[#eaaa94]"
-                  />
-                  {point}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div
+
+      <div className={`${container} pt-16 sm:pt-24`}>
+        {/* 2. Header */}
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-end lg:gap-10">
+          <h2
+            id="certifications-title"
             data-cert-reveal="rise"
-            data-cert-delay="150"
-            className="flex items-end gap-6 lg:justify-self-end"
+            className={`${display} text-[clamp(2.1rem,4vw,3.4rem)] leading-[1.08] tracking-[-.015em] lg:col-span-7`}
           >
-            <span
-              aria-hidden="true"
-              className="text-[clamp(4.5rem,8vw,7rem)] leading-[.8] font-light tracking-[-.08em] text-[#d2dcc4]"
-            >
-              05<span className="text-[#efad99]">.</span>
+            Proof in the details.
+            <br />
+            <span className="text-[#c8102e] italic">
+              Confidence in the making.
             </span>
-            <div className="max-w-[240px]">
-              <p className="font-mono text-[9px] tracking-[.1em] text-[#efad99]">
-                FIVE MARKS. ONE COLLECTION.
-              </p>
-              <p className="mt-3 text-xs leading-[1.9] text-[#bbc7b0]">
-                Explore the marks featured in our collection and talk to our
-                team about your program&apos;s documentation requirements.
-              </p>
-            </div>
-          </div>
+          </h2>
+          <p
+            data-cert-reveal="rise"
+            data-cert-delay="120"
+            className="max-w-md text-sm leading-[1.85] text-black/65 lg:col-span-4 lg:col-start-9"
+          >
+            Five marks, one collection. Explore the marks featured in our
+            collection and talk to our team about your program&apos;s
+            documentation requirements.
+          </p>
         </div>
+
+        {/* 3. Points strip */}
+        <ul
+          data-cert-reveal="rise"
+          className="mt-10 grid grid-cols-3 border-y border-black/10"
+        >
+          {points.map((point) => (
+            <li
+              key={point}
+              className="flex items-center justify-center gap-2 border-r border-black/10 px-2 py-4 text-[13px] last:border-r-0 sm:justify-start sm:gap-3 sm:px-6 sm:text-sm"
+            >
+              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#c8102e] text-white">
+                <Check size={11} strokeWidth={3} aria-hidden="true" />
+              </span>
+              {point}
+            </li>
+          ))}
+        </ul>
+
+        {/* 4. Module */}
         <div
-          className={`grid gap-6 ${enhanced ? "lg:grid-cols-[.76fr_1.24fr] lg:gap-8" : "grid-cols-1"}`}
+          ref={stage}
+          data-cert-stage
+          data-cert-reveal="pop"
+          className="mt-10 min-w-0 [perspective:1400px] sm:mt-14"
         >
           <div
-            className={enhanced ? "min-w-0" : "hidden"}
-            data-cert-reveal="rise"
+            ref={tilt}
+            data-cert-tilt
+            className={
+              enhanced
+                ? "overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_40px_70px_-40px_rgba(0,0,0,.18)]"
+                : "grid gap-6"
+            }
           >
-            <p className="mb-4 font-mono text-[8px] tracking-[.12em] text-[#bbc7b0]">
-              SELECT A MARK / EXPLORE THE COLLECTION
-            </p>
+            {/* rail zone */}
             <div
-              role={enhanced ? "tablist" : undefined}
-              aria-label="Standards and initiatives"
-              aria-orientation={vertical ? "vertical" : "horizontal"}
-              className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1 lg:gap-2.5"
+              className={`${enhanced ? "block" : "hidden"} border-b border-black/10 bg-[#faf9f7] px-4 pt-6 pb-8 sm:px-10 sm:pt-8 sm:pb-10`}
             >
-              {certifications.map((cert, index) => (
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-black/55">Choose a certification</p>
                 <button
-                  key={cert.name}
-                  ref={(node) => {
-                    tabs.current[index] = node;
-                  }}
-                  id={`${id}-tab-${index}`}
                   type="button"
-                  role="tab"
-                  aria-label={cert.name}
-                  aria-selected={active === index}
-                  aria-controls={`${id}-panel-${index}`}
-                  tabIndex={active === index ? 0 : -1}
-                  onClick={() => setActive(index)}
-                  onKeyDown={(event) => handleKey(event, index)}
-                  className="group flex min-h-[72px] w-full items-center gap-2.5 rounded-2xl border border-[#59674f] bg-[#212a20] px-3 py-3 text-left text-[#dce6d2] transition duration-300 hover:translate-x-1 hover:border-[#93a481] hover:bg-[#2f3d29] aria-selected:border-[#f3f1e7] aria-selected:bg-[#f3f1e7] aria-selected:text-[#252c22] aria-selected:hover:bg-[#e3e8d9] aria-selected:hover:text-[#252c22] lg:min-h-[78px] lg:gap-5 lg:px-6 lg:py-4"
+                  onClick={() => setPaused((value) => !value)}
+                  aria-pressed={paused}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-black/15 bg-white px-4 py-2 text-xs font-medium transition-colors hover:border-black hover:bg-black hover:text-white motion-reduce:hidden"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="font-mono text-[9px] opacity-80"
-                  >
-                    0{index + 1}
-                  </span>
-                  <span className="min-w-0 text-[13px] leading-[1.3] font-medium tracking-[-.025em] sm:text-sm lg:text-lg">
-                    {cert.name}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="ml-auto hidden size-8 shrink-0 place-items-center rounded-full border border-current opacity-80 lg:grid"
-                  >
-                    <ArrowDownRight
-                      size={17}
-                      className="transition-transform group-hover:-rotate-45"
-                    />
-                  </span>
+                  {paused ? (
+                    <Play size={12} aria-hidden="true" />
+                  ) : (
+                    <Pause size={12} aria-hidden="true" />
+                  )}
+                  {paused ? "Resume motion" : "Pause motion"}
                 </button>
-              ))}
+              </div>
+
+              <div className="relative mt-8">
+                <div
+                  aria-hidden="true"
+                  className="absolute top-[31px] right-[10%] left-[10%] h-[2px] overflow-hidden bg-black/10 sm:top-[39px]"
+                >
+                  <div
+                    className="absolute inset-y-0 left-0 bg-[#c8102e] transition-[width] duration-700 ease-[cubic-bezier(.16,1,.3,1)]"
+                    style={{ width: `${(active / last) * 100}%` }}
+                  />
+                  <div
+                    data-cert-motion="sweep"
+                    className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/80 to-transparent"
+                  />
+                </div>
+                <div
+                  role={enhanced ? "tablist" : undefined}
+                  aria-label="Standards and initiatives"
+                  aria-orientation="horizontal"
+                  className="relative grid grid-cols-5"
+                >
+                  {certifications.map((cert, index) => (
+                    <button
+                      key={cert.name}
+                      ref={(node) => {
+                        tabs.current[index] = node;
+                      }}
+                      id={`${id}-tab-${index}`}
+                      type="button"
+                      role="tab"
+                      aria-label={cert.name}
+                      aria-selected={active === index}
+                      aria-controls={`${id}-panel-${index}`}
+                      tabIndex={active === index ? 0 : -1}
+                      onClick={() => go(index)}
+                      onKeyDown={(event) => handleKey(event, index)}
+                      className="group flex min-w-0 flex-col items-center gap-4 px-1 text-center"
+                    >
+                      <span className="relative grid size-16 place-items-center sm:size-20">
+                        <span
+                          aria-hidden="true"
+                          data-cert-motion="orbit"
+                          className="absolute -inset-2 rounded-full border border-[#c8102e]/60 opacity-0 transition-opacity duration-500 group-aria-selected:opacity-100"
+                        >
+                          <span className="absolute top-1/2 -left-[3px] size-1.5 rounded-full bg-[#c8102e]" />
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          data-cert-motion="counter-orbit"
+                          className="absolute -inset-4 rounded-full border border-black/10 opacity-0 transition-opacity duration-500 group-aria-selected:opacity-100"
+                        >
+                          <span className="absolute top-[12%] right-[12%] size-1 rounded-full bg-black/50" />
+                        </span>
+                        <span className="relative size-full overflow-hidden rounded-full border border-black/15 bg-white transition duration-300 group-hover:-translate-y-1 group-hover:border-black group-aria-selected:border-[#c8102e] group-aria-selected:shadow-[0_10px_24px_rgba(200,16,46,.18)]">
+                          <Image
+                            src={cert.src}
+                            alt=""
+                            fill
+                            sizes="80px"
+                            className="object-contain p-3 grayscale transition duration-300 group-hover:grayscale-0 group-aria-selected:grayscale-0 sm:p-4"
+                          />
+                        </span>
+                      </span>
+                      <span className="flex min-h-[2.4em] items-start text-xs leading-snug text-black/50 transition-colors group-hover:text-black group-aria-selected:font-medium group-aria-selected:text-black sm:text-sm">
+                        <span className="sm:hidden">{cert.short}</span>
+                        <span className="hidden sm:inline">{cert.name}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <p className="mt-5 flex items-start gap-2.5 text-[10px] leading-[1.85] text-[#bbc7b0]">
-              <ScanLine
-                size={16}
+
+            {/* detail zone */}
+            <div
+              className={
+                enhanced ? "relative p-4 sm:p-6" : "grid gap-6"
+              }
+            >
+              <div
                 aria-hidden="true"
-                className="mt-0.5 shrink-0 text-[#efad99]"
-              />
-              A closer look at the identities behind the collection.
-            </p>
-          </div>
-          <div
-            ref={stage}
-            data-cert-stage
-            data-cert-reveal="pop"
-            className={`relative grid min-w-0 overflow-hidden rounded-[28px] border border-[#a9b59b] bg-[#e9eddf] p-4 text-[#252c22] [perspective:1100px] [--cert-focus:#993524] sm:p-7 ${enhanced ? "min-h-[460px] place-items-center sm:min-h-[560px]" : ""}`}
-          >
-            <div
-              aria-hidden="true"
-              className={
-                enhanced ? "pointer-events-none absolute inset-0" : "hidden"
-              }
-            >
-              <div
-                className="absolute top-1/2 left-1/2 size-[94%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#9cae88]/60"
-                data-cert-motion="orbit"
+                className={`${enhanced ? "block" : "hidden"} pointer-events-none absolute inset-x-4 top-0 z-10 h-0 sm:inset-x-10`}
               >
-                <span className="absolute top-1/2 -left-1.5 size-3 rounded-full bg-[#b94c36]" />
-                <span className="absolute top-[11%] right-[11%] size-2 rounded-full bg-[#70865a]" />
+                <span
+                  className="absolute -top-2 size-4 rotate-45 border-t border-l border-black/10 bg-white transition-[left] duration-700 ease-[cubic-bezier(.16,1,.3,1)]"
+                  style={{ left: `calc(${active * 20 + 10}% - 8px)` }}
+                />
               </div>
-              <div
-                className="absolute top-1/2 left-1/2 size-[76%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#9aaa88]"
-                data-cert-motion="counter-orbit"
-              >
-                <span className="absolute right-[14%] bottom-[14%] size-2 rounded-full bg-[#b94c36]" />
-              </div>
-              <span className="absolute top-5 left-5 font-mono text-[8px] tracking-[.1em] text-[#5e6b50]">
-                THE CONFIDENCE COLLECTION
-              </span>
-              <span className="absolute right-5 bottom-5 font-mono text-[8px] tracking-[.1em] text-[#5e6b50]">
-                DETAILS WORTH A CLOSER LOOK
-              </span>
-              <div
-                data-cert-motion="sweep"
-                className="absolute top-0 bottom-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/60 to-transparent"
-              />
-            </div>
-            <div
-              ref={tilt}
-              data-cert-tilt
-              className={
-                enhanced
-                  ? "relative z-10 w-full max-w-[560px] px-1 sm:px-4"
-                  : "relative grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3"
-              }
-            >
+
               {certifications.map((cert, index) => (
                 <article
                   key={cert.name}
@@ -506,45 +566,96 @@ export default function Certifications() {
                   aria-labelledby={enhanced ? `${id}-tab-${index}` : undefined}
                   aria-label={enhanced ? undefined : cert.name}
                   tabIndex={enhanced ? 0 : undefined}
-                  className={`${!enhanced || active === index ? "flex" : "hidden"} min-h-[365px] min-w-0 flex-col justify-between rounded-3xl border border-[#ccd3bf] bg-[#fffef9] p-5 shadow-[0_18px_45px_#27341c12] sm:min-h-[420px] sm:p-7`}
+                  className={`${!enhanced || active === index ? "grid" : "hidden"} min-w-0 gap-6 lg:grid-cols-[1fr_.85fr] lg:gap-10 ${enhanced ? "" : "rounded-2xl border border-black/10 p-4"}`}
                 >
-                  <div className="flex items-center justify-between gap-4 border-b border-[#dce1d2] pb-4">
-                    <span className="font-mono text-[8px] tracking-[.1em] text-[#5e6b50]">
-                      COLLECTION / {cert.short}
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="font-mono text-[9px] text-[#8b3e2d]"
-                    >
-                      0{index + 1} / 05
-                    </span>
-                  </div>
-                  <div className="relative mx-auto my-5 h-[140px] w-full max-w-[260px] sm:h-[175px]">
-                    <Image
-                      src={cert.src}
-                      alt={`${cert.name} mark`}
-                      fill
-                      sizes="(min-width:640px) 260px,180px"
-                      className="object-contain px-4 py-2"
-                    />
-                  </div>
-                  <div>
-                    <p className="font-mono text-[8px] tracking-[.1em] text-[#5e6b50]">
-                      FEATURED IN OUR COLLECTION
+                  {/* copy column */}
+                  <div className="order-2 flex min-w-0 flex-col justify-between gap-10 px-2 pt-2 pb-2 sm:px-4 lg:order-1 lg:py-4">
+                    <p className="flex items-center gap-2.5 text-sm font-medium">
+                      <span
+                        aria-hidden="true"
+                        className="size-2 rounded-full bg-[#c8102e]"
+                      />
+                      Featured in our collection
                     </p>
-                    <h3 className="mt-2.5 text-[clamp(1.5rem,2.8vw,2.5rem)] leading-[1.1] font-medium tracking-[-.045em]">
-                      {cert.name}
-                    </h3>
+                    <div>
+                      <h3
+                        className={`${display} text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.1] tracking-[-.01em] [overflow-wrap:anywhere]`}
+                      >
+                        {cert.name}
+                      </h3>
+                      <p className="mt-4 max-w-md text-sm leading-[1.85] text-black/65">
+                        Ask our team which documentation applies to your
+                        branding program, and how this mark fits into your
+                        order.
+                      </p>
+                    </div>
+                    <div
+                      className={`${enhanced ? "flex" : "hidden"} items-center justify-between gap-4 border-t border-black/10 pt-5`}
+                    >
+                      <span className="rounded-full border border-black/15 px-3 py-1 text-xs text-black/70">
+                        {cert.short}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="mr-1 text-xs text-black/50"
+                        >
+                          {index + 1} / {count}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Previous certification"
+                          onClick={() => go((index + last) % count, true)}
+                          className={iconButton}
+                        >
+                          <ChevronLeft size={18} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Next certification"
+                          onClick={() => go((index + 1) % count, true)}
+                          className={iconButton}
+                        >
+                          <ChevronRight size={18} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* visual column */}
+                  <div className="relative order-1 grid min-h-[260px] place-items-center overflow-hidden rounded-2xl bg-[#f5f4f2] p-6 lg:order-2 lg:min-h-[340px]">
                     <div
                       aria-hidden="true"
-                      className="mt-5 flex items-center justify-between gap-4"
-                    >
-                      <span className="h-px w-12 bg-[#a9b59b]" />
-                      <MoveUpRight
-                        size={22}
-                        strokeWidth={1.3}
-                        className="text-[#8b3e2d]"
-                      />
+                      data-cert-motion="sweep"
+                      className="pointer-events-none absolute top-0 bottom-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/90 to-transparent"
+                    />
+                    <div className="relative aspect-square w-full max-w-[230px]">
+                      <div
+                        aria-hidden="true"
+                        data-cert-motion="orbit"
+                        className="absolute -inset-[8%] rounded-full border border-[#c8102e]/40"
+                      >
+                        <span className="absolute top-1/2 -left-1 size-2 rounded-full bg-[#c8102e]" />
+                      </div>
+                      <div
+                        aria-hidden="true"
+                        data-cert-motion="counter-orbit"
+                        className="absolute -inset-[22%] rounded-full border border-black/10"
+                      >
+                        <span className="absolute right-[14%] bottom-[14%] size-1.5 rounded-full bg-black/60" />
+                      </div>
+                      <div
+                        data-cert-disc
+                        className="absolute inset-0 rounded-full bg-white shadow-[0_14px_34px_rgba(0,0,0,.08)]"
+                      >
+                        <Image
+                          src={cert.src}
+                          alt={`${cert.name} mark`}
+                          fill
+                          sizes="230px"
+                          className="object-contain p-[16%]"
+                        />
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -552,58 +663,39 @@ export default function Certifications() {
             </div>
           </div>
         </div>
+
+        {/* 5. Contact bar */}
         <div
           data-cert-reveal="rise"
-          className="mt-7 flex flex-col items-start justify-between gap-5 rounded-2xl border border-[#53614a] bg-[#20291f] px-5 py-5 sm:flex-row sm:items-center sm:px-7"
+          className="relative mt-10 flex flex-col items-start justify-between gap-6 overflow-hidden rounded-[28px] bg-[#c8102e] px-6 py-8 text-white [--cert-focus:#ffffff] sm:mt-14 sm:px-10 md:flex-row md:items-center"
         >
-          <div>
-            <p className="text-sm font-medium tracking-[-.015em]">
+          <div
+            data-cert-motion="glow"
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-white/25 blur-3xl"
+          />
+          <div className="relative">
+            <p
+              className={`${display} text-[clamp(1.4rem,2.3vw,2rem)] leading-[1.15] tracking-[-.01em]`}
+            >
               Your requirements. A closer conversation.
             </p>
-            <p className="mt-2 max-w-xl text-xs leading-[1.85] text-[#bbc7b0]">
+            <p className="mt-2 max-w-md text-sm leading-[1.85] text-white/80">
               Ask our team about the documentation relevant to your branding
               program.
             </p>
           </div>
           <Link
             href="/contact"
-            className="group inline-flex min-h-12 shrink-0 items-center justify-between gap-5 rounded-full bg-[#f3f1e7] px-5 py-3.5 text-[11px] font-semibold text-[#252c22] transition duration-300 hover:-translate-y-1 hover:bg-[#e7c3b2] [--cert-focus:#f0ad98]"
+            className="group relative inline-flex min-h-12 shrink-0 items-center gap-3 rounded-full bg-white px-6 py-3 text-sm font-medium text-[#0a0a0a] transition-colors duration-300 hover:bg-[#0a0a0a] hover:text-white"
           >
             <span>Discuss documentation</span>
             <ArrowUpRight
               size={17}
               aria-hidden="true"
-              className="transition-transform group-hover:-translate-y-1 group-hover:translate-x-1"
+              className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
             />
           </Link>
-        </div>
-      </div>
-      <div
-        aria-hidden="true"
-        className="mt-12 overflow-hidden border-y border-[#485442] py-4 sm:mt-16 sm:py-5"
-      >
-        <div data-cert-motion="marquee" className="flex w-max">
-          {[0, 1].map((copy) => (
-            <div
-              key={copy}
-              className="flex min-w-[100vw] shrink-0 items-center justify-around"
-            >
-              {[...points, ...points, ...points].map((point, index) => (
-                <span
-                  key={`${point}-${index}`}
-                  className={`mr-8 flex items-center gap-8 whitespace-nowrap text-[clamp(2.4rem,6.5vw,5.8rem)] leading-none font-medium tracking-[-.06em] sm:mr-12 sm:gap-12 ${index % 3 === 1 ? "font-serif font-normal italic text-[#efad99]" : "text-[#dce6d2]"}`}
-                >
-                  {point}
-                  <Asterisk
-                    size={36}
-                    strokeWidth={1.1}
-                    data-cert-motion={index < 3 ? "orbit" : undefined}
-                    className="text-[#efad99]"
-                  />
-                </span>
-              ))}
-            </div>
-          ))}
         </div>
       </div>
     </section>
